@@ -1,460 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Noosphere · RNG Coherence Monitor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#05070d; --bg2:#0a0e18;
-    --panel:rgba(15,21,35,0.66);
-    --panel-edge:rgba(120,160,210,0.10);
-    --grid:rgba(120,160,210,0.08);
-    --ink:#cbd8f0; --dim:#67779a; --faint:#3c4863;
-    --trace:#67e0ff; --envelope:rgba(120,150,200,0.22);
-    --nominal:#54e0a6; --warn:#ffc24d; --alert:#ff5c7a;
-    --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-    --sans:'IBM Plex Sans',system-ui,sans-serif;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--mono);-webkit-font-smoothing:antialiased;}
-  body{
-    min-height:100vh;
-    background:
-      radial-gradient(1100px 700px at 75% -10%, rgba(40,90,140,0.18), transparent 60%),
-      radial-gradient(900px 600px at 5% 110%, rgba(90,40,120,0.12), transparent 55%),
-      linear-gradient(180deg,var(--bg) 0%, var(--bg2) 100%);
-    background-attachment:fixed;
-  }
-  /* faint grid + grain overlays */
-  body::before{
-    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-    background-size:46px 46px,46px 46px;
-    mask-image:radial-gradient(circle at 50% 35%,#000 35%,transparent 85%);
-  }
-  body::after{
-    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-  .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:22px 16px 60px;}
-
-  header{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;}
-  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:10px;}
-  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--nominal);box-shadow:0 0 10px var(--nominal);animation:pulse 2.4s ease-in-out infinite;}
-  @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
-  h1{font-family:var(--sans);font-weight:300;font-size:clamp(26px,6vw,42px);letter-spacing:-.01em;margin:2px 0 0;line-height:1.02;}
-  h1 b{font-weight:500;color:#eaf1ff;}
-  .sub{font-family:var(--sans);font-weight:300;color:var(--dim);font-size:13.5px;max-width:62ch;line-height:1.5;}
-
-  .banner{
-    margin:16px 0;border:1px solid var(--panel-edge);border-left:3px solid var(--nominal);
-    background:linear-gradient(90deg,rgba(84,224,166,0.08),transparent);
-    padding:13px 16px;border-radius:4px;display:flex;align-items:center;gap:12px;
-    transition:border-color .4s,background .4s;
-  }
-  .banner .glyph{font-size:18px;line-height:1;}
-  .banner .btxt{font-size:12.5px;letter-spacing:.05em;}
-  .banner .btxt .lead{color:#eaf1ff;font-weight:500;}
-  .banner .btxt .det{color:var(--dim);}
-  .banner.warn{border-left-color:var(--warn);background:linear-gradient(90deg,rgba(255,194,77,0.10),transparent);}
-  .banner.alert{border-left-color:var(--alert);background:linear-gradient(90deg,rgba(255,92,122,0.12),transparent);animation:alertpulse 1.6s ease-in-out infinite;}
-  @keyframes alertpulse{0%,100%{box-shadow:0 0 0 rgba(255,92,122,0)}50%{box-shadow:0 0 26px rgba(255,92,122,0.18)}}
-
-  .panel{background:var(--panel);border:1px solid var(--panel-edge);border-radius:7px;backdrop-filter:blur(7px);}
-
-  .chartwrap{padding:14px 14px 8px;}
-  .charthead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:4px;}
-  .charthead .t{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);}
-  .charthead .leg{font-size:10.5px;color:var(--faint);letter-spacing:.04em;}
-  .charthead .leg i{font-style:normal;color:var(--trace);}
-  canvas{width:100%;display:block;border-radius:4px;}
-
-  .grid-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0;}
-  @media(max-width:560px){.grid-tiles{grid-template-columns:repeat(2,1fr);}}
-  .tile{padding:12px 13px;border-radius:6px;}
-  .tile .lab{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:7px;}
-  .tile .val{font-size:23px;font-weight:500;color:#eaf1ff;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
-  .tile .val.sm{font-size:18px;}
-  .tile .note{font-size:10.5px;color:var(--faint);margin-top:6px;letter-spacing:.03em;}
-  .tile .val.hot{color:var(--warn);} .tile .val.cold{color:var(--trace);} .tile .val.alert{color:var(--alert);}
-
-  /* coherence meter */
-  .meter{margin:2px 0 14px;padding:13px 14px;border-radius:6px;}
-  .meter .lab{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;display:flex;justify-content:space-between;}
-  .meter .lab span:last-child{color:var(--faint);}
-  .track{position:relative;height:10px;background:rgba(120,150,200,0.08);border-radius:6px;overflow:hidden;}
-  .track .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(180,200,230,0.35);}
-  .fill{position:absolute;top:0;bottom:0;left:50%;width:0;transition:width .25s ease,background .25s;border-radius:6px;}
-  .scalerow{display:flex;justify-content:space-between;font-size:9.5px;color:var(--faint);margin-top:6px;letter-spacing:.04em;}
-
-  .controls{padding:15px;display:grid;grid-template-columns:1fr 1fr;gap:13px;}
-  @media(max-width:560px){.controls{grid-template-columns:1fr;}}
-  .ctl{display:flex;flex-direction:column;gap:6px;}
-  .ctl label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
-  select,button{font-family:var(--mono);font-size:13px;color:var(--ink);background:rgba(10,16,28,0.8);border:1px solid var(--panel-edge);border-radius:5px;padding:9px 11px;outline:none;cursor:pointer;}
-  select:focus{border-color:var(--trace);}
-  .btnrow{display:flex;gap:9px;grid-column:1/-1;flex-wrap:wrap;}
-  .btnrow button{flex:1;min-width:96px;letter-spacing:.08em;text-transform:uppercase;font-size:12px;transition:.18s;}
-  .btnrow button:hover{border-color:var(--trace);color:#fff;}
-  button.primary{background:linear-gradient(180deg,rgba(103,224,255,0.16),rgba(103,224,255,0.05));border-color:rgba(103,224,255,0.4);color:#dff6ff;}
-  button.primary.run{background:linear-gradient(180deg,rgba(255,194,77,0.16),rgba(255,194,77,0.05));border-color:rgba(255,194,77,0.4);color:#fff3da;}
-  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;background:linear-gradient(90deg,var(--trace),var(--alert));outline:none;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#eaf1ff;border:2px solid var(--bg);box-shadow:0 0 8px rgba(103,224,255,0.6);cursor:pointer;}
-  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#eaf1ff;border:2px solid var(--bg);cursor:pointer;}
-  .rho-val{font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums;}
-  .rho-val b{color:var(--alert);}
-  .seednote{font-size:10.5px;color:var(--faint);grid-column:1/-1;letter-spacing:.02em;min-height:14px;}
-
-  details{margin-top:18px;border:1px solid var(--panel-edge);border-radius:7px;background:var(--panel);}
-  summary{cursor:pointer;padding:14px 16px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);list-style:none;}
-  summary::-webkit-details-marker{display:none;}
-  summary::before{content:"▸ ";color:var(--trace);}
-  details[open] summary::before{content:"▾ ";}
-  .about{padding:0 18px 18px;font-family:var(--sans);font-weight:300;font-size:13.5px;color:#b6c4df;line-height:1.62;}
-  .about p{margin:0 0 11px;}
-  .about strong{color:#eaf1ff;font-weight:500;}
-  .about .flag{color:var(--warn);font-weight:500;}
-  footer{margin-top:26px;text-align:center;font-size:10.5px;color:var(--faint);letter-spacing:.1em;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coherence Monitor - RNG Network</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #0f0f23; color: #0f0; }
+        h1 { text-align: center; color: #0ff; }
+        .source { border: 1px solid #0f0; margin: 15px 0; padding: 15px; border-radius: 8px; background: #1a1a2e; }
+        .data { font-family: monospace; white-space: pre-wrap; }
+        button { background: #0f0; color: #000; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0ff; }
+        .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+        .metric { background: #16213e; padding: 10px; border-radius: 4px; flex: 1; min-width: 200px; }
+        .coherence { font-size: 1.2em; font-weight: bold; }
+    </style>
 </head>
 <body>
-<div class="wrap">
+    <h1>🌍 Coherence Monitor</h1>
+    <p style="text-align:center;">Like GCP: Monitoring multiple true RNG sources for deviations / coherence.<br>
+    Data updates every ~10-30s (rate-limited by sources).</p>
 
-  <header>
-    <div class="eyebrow"><span class="dot" id="livedot"></span> Network Variance Instrument · v1</div>
-    <h1>RNG <b>Coherence Monitor</b></h1>
-    <div class="sub">A live network of independent random-event generators, watched for an anomalous <em>loss of randomness between channels</em> — the inter-generator variance collapse the Global Consciousness Project treated as its signature of coherence.</div>
-  </header>
+    <div class="stats" id="stats"></div>
 
-  <div class="banner" id="banner">
-    <span class="glyph" id="bglyph">●</span>
-    <div class="btxt"><span class="lead" id="blead">STANDBY</span> <span class="det" id="bdet">— press RUN to begin sampling the network.</span></div>
-  </div>
+    <div id="sources"></div>
 
-  <div class="panel chartwrap">
-    <div class="charthead">
-      <div class="t">Cumulative Network-Variance Deviation</div>
-      <div class="leg"><i>━ observed</i> &nbsp; ┄ chance envelope (p=.05 / .01)</div>
-    </div>
-    <canvas id="chart" height="320"></canvas>
-  </div>
+    <button onclick="fetchAll()">Refresh All Sources</button>
+    <button onclick="analyzeCoherence()">Analyze Coherence</button>
 
-  <div class="grid-tiles">
-    <div class="tile panel"><div class="lab">Network size</div><div class="val sm" id="m_n">10,000</div><div class="note">RNG channels · 200-bit trials</div></div>
-    <div class="tile panel"><div class="lab">Trials elapsed</div><div class="val sm" id="m_t">0</div><div class="note">samples / sec-equivalent</div></div>
-    <div class="tile panel"><div class="lab">Inter-RNG variance</div><div class="val" id="m_var">—</div><div class="note">expected 1.000</div></div>
-    <div class="tile panel"><div class="lab">Coherence Z</div><div class="val" id="m_coh">—</div><div class="note" id="m_odds">odds vs chance —</div></div>
-    <div class="tile panel"><div class="lab">Network Z (Stouffer)</div><div class="val" id="m_z">—</div><div class="note" id="m_p">p = —</div></div>
-    <div class="tile panel"><div class="lab">Cum. deviation</div><div class="val sm" id="m_dev">—</div><div class="note" id="m_devsig">— σ from chance</div></div>
-  </div>
+    <script>
+        // Sources: True RNGs (atmospheric, quantum, beacons)
+        const sources = [
+            {
+                name: "random.org (Atmospheric)",
+                url: "https://www.random.org/integers/?num=10&min=0&max=1&col=1&base=10&format=plain&rnd=new",
+                parser: (text) => text.trim().split('\n').map(n => parseInt(n)),
+                type: "binary"
+            },
+            {
+                name: "ANU QRNG (Quantum)",
+                url: "https://qrng.anu.edu.au/API/jsonI.php?length=10&type=uint8",
+                parser: (json) => JSON.parse(json).data,
+                type: "bytes"
+            },
+            {
+                name: "NIST Beacon (Quantum)",
+                url: "https://beacon.nist.gov/beacon/2.0/pulse/last",
+                parser: (json) => {
+                    const data = JSON.parse(json);
+                    return Array.from(data.pulse.outputValue.match(/.{1,2}/g) || []).map(h => parseInt(h, 16) % 2);
+                },
+                type: "binary"
+            },
+            {
+                name: "drand (Distributed)",
+                url: "https://api.drand.sh/public/latest",
+                parser: (json) => {
+                    const data = JSON.parse(json);
+                    return Array.from(atob(data.randomness).slice(0,10)).map(c => c.charCodeAt(0) % 2);
+                },
+                type: "binary"
+            }
+        ];
 
-  <div class="meter panel">
-    <div class="lab"><span>Coherence ◂ field state ▸ divergence</span><span id="meterstate">independent</span></div>
-    <div class="track"><div class="mid"></div><div class="fill" id="fill"></div></div>
-    <div class="scalerow"><span>− excess variance</span><span>0</span><span>+ order / coherence</span></div>
-  </div>
+        let allData = {};
 
-  <div class="panel controls">
-    <div class="ctl">
-      <label for="size">Network size</label>
-      <select id="size">
-        <option value="1000">1,000 channels</option>
-        <option value="10000" selected>10,000 channels</option>
-        <option value="100000">100,000 channels</option>
-        <option value="1000000">1,000,000 channels (heavy)</option>
-      </select>
-    </div>
-    <div class="ctl">
-      <label for="rate">Sample interval</label>
-      <select id="rate">
-        <option value="100">100 ms (fast)</option>
-        <option value="200" selected>200 ms</option>
-        <option value="500">500 ms</option>
-        <option value="1000">1 s</option>
-      </select>
-    </div>
+        async function fetchSource(src) {
+            try {
+                const response = await fetch(src.url, { mode: 'cors' });
+                if (!response.ok) throw new Error('Failed');
+                const raw = await response.text();
+                const numbers = src.parser(raw);
+                allData[src.name] = numbers;
+                return { name: src.name, numbers, success: true };
+            } catch (e) {
+                console.error(src.name, e);
+                return { name: src.name, error: e.message, success: false };
+            }
+        }
 
-    <div class="ctl" style="grid-column:1/-1;">
-      <label for="rho">Test correlation &nbsp;<span class="rho-val">ρ = <b id="rhoval">0.00</b> &nbsp;·&nbsp; shared variance <span id="rho2">0.0%</span></span></label>
-      <input type="range" id="rho" min="0" max="0.6" step="0.01" value="0" />
-    </div>
-
-    <div class="btnrow">
-      <button id="run" class="primary">▶ Run</button>
-      <button id="reset">Reset</button>
-      <button id="seed">Pull verified-quantum seed</button>
-    </div>
-    <div class="seednote" id="seednote">Source: browser CSPRNG (crypto.getRandomValues). The quantum-seed button is optional and may be blocked by CORS in-browser.</div>
-  </div>
-
-  <details>
-    <summary>What this is — and what it is not</summary>
-    <div class="about">
-      <p>Each tick, every channel draws a fresh <strong>200-bit trial</strong> and is scored against pure chance (a Binomial(200, ½): mean 100, SD ≈ 7.07). The two quantities the Global Consciousness Project tracked are shown live: the <strong>network mean</strong> (Stouffer Z across channels) and, more to your point, the <strong>inter-channel variance</strong> — how much the generators disagree with each other. Under independence that variance sits at 1.000. A drop below it means the channels are moving together: <strong>order leaking into noise</strong>. The chart accumulates the network-variance deviation against a chance envelope; sustained excursions are quantified as a coherence Z and odds-against-chance.</p>
-      <p class="flag">The honest caveat. The entropy here is the browser's cryptographic RNG — an algorithm seeded by the operating system, not a physical/quantum random-event generator. By construction it stays random; it has no physical noise source for a "field of attention" to perturb, and any micro-bias would be erased by the OS whitening anyway. So this instrument cannot, in principle, reproduce the GCP's claimed effect. The detector is real and correct; the source is not a physical REG.</p>
-      <p>The <strong>Test correlation (ρ)</strong> slider injects an artificial shared fluctuation into every channel so you can watch what a genuine anomaly <em>would</em> look like — the variance collapsing, the chart breaking its envelope, the odds climbing. It is a calibration signal, not consciousness. Set it to zero to see true independence.</p>
-      <p>To attempt the real experiment you need raw output from <strong>hardware quantum/thermal REGs</strong> read <em>unconditioned</em> (the PEAR-lineage devices the GCP used), or a verifiable physical feed such as NIST/CU Boulder's CURBy beacon — piped into exactly this statistical pipeline.</p>
-    </div>
-  </details>
-
-  <footer>NOOSPHERE · for inquiry &amp; instrumentation — not a scientific claim</footer>
-</div>
-
-<!-- ===================== entropy + statistics worker ===================== -->
-<script id="worker" type="javascript/worker">
-  const BITS=200, MU=100, SD=Math.sqrt(50);
-  const LUT=new Uint8Array(256);
-  for(let i=0;i<256;i++){let v=i,c=0;while(v){c+=v&1;v>>=1;}LUT[i]=c;}
-  let N=10000, intervalMs=200, rho=0;
-  let running=false, timer=null;
-  let t=0, cumDev=0, cumCohRaw=0;
-  let buf=null, bytesPerSample=0;
-  const CHUNK=65536;
-  function alloc(){ bytesPerSample=N*25; buf=new Uint8Array(bytesPerSample); }
-  function fill(){ for(let off=0; off<bytesPerSample; off+=CHUNK){ const len=Math.min(CHUNK,bytesPerSample-off); crypto.getRandomValues(buf.subarray(off,off+len)); } }
-  function gauss(){
-    let u1=0; const a=new Uint32Array(1);
-    while(u1<=0){ crypto.getRandomValues(a); u1=a[0]/4294967296; }
-    const b=new Uint32Array(1); crypto.getRandomValues(b); const u2=b[0]/4294967296;
-    return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
-  }
-  function erf(x){ const s=x<0?-1:1; x=Math.abs(x); const t=1/(1+0.3275911*x);
-    const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return s*y; }
-  function normCdf(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
-  function step(){
-    fill();
-    let sumZ=0,sumZ2=0;
-    for(let e=0;e<N;e++){
-      const base=e*25; let k=0;
-      for(let j=0;j<25;j++){ k+=LUT[buf[base+j]]; }
-      const z=(k-MU)/SD; sumZ+=z; sumZ2+=z*z;
-    }
-    if(rho>0){
-      const aa=Math.sqrt(1-rho*rho); const c=gauss();
-      const nSumZ = aa*sumZ + N*rho*c;
-      const nSumZ2= aa*aa*sumZ2 + 2*aa*rho*c*sumZ + N*rho*rho*c*c;
-      sumZ=nSumZ; sumZ2=nSumZ2;
-    }
-    const meanZ=sumZ/N;
-    const networkVar=sumZ2;                  // Σ Z² , E = N
-    const sampleVar=sumZ2/N - meanZ*meanZ;    // cross-channel variance, E ≈ 1
-    const stoufferZ=sumZ/Math.sqrt(N);
-    t++;
-    cumDev += (networkVar - N);
-    const envSD=Math.sqrt(t*2*N);
-    const sdS2=Math.sqrt(2/(N-1));
-    const cohZ=(1 - sampleVar)/sdS2;          // + => variance deficit (coherence)
-    cumCohRaw += cohZ;
-    const cumCohZ = cumCohRaw/Math.sqrt(t);
-    const instP = 2*(1-normCdf(Math.abs(stoufferZ)));
-    postMessage({type:'sample',t,cumDev,envSD,networkVar,expVar:N,sampleVar,stoufferZ,instP,cumCohZ});
-    if(running){ timer=setTimeout(step, intervalMs); }
-  }
-  onmessage=(ev)=>{ const m=ev.data;
-    if(m.cmd==='config'){ N=m.N; intervalMs=m.intervalMs; rho=m.rho; alloc(); }
-    else if(m.cmd==='rho'){ rho=m.rho; }
-    else if(m.cmd==='interval'){ intervalMs=m.intervalMs; }
-    else if(m.cmd==='start'){ if(!running){ running=true; step(); } }
-    else if(m.cmd==='pause'){ running=false; if(timer) clearTimeout(timer); }
-    else if(m.cmd==='reset'){ running=false; if(timer) clearTimeout(timer); t=0; cumDev=0; cumCohRaw=0; alloc(); postMessage({type:'reset'}); }
-  };
-</script>
-
-<!-- ===================== main thread ===================== -->
-<script>
-  const $=id=>document.getElementById(id);
-  const worker=new Worker(URL.createObjectURL(new Blob([$('worker').textContent],{type:'application/javascript'})));
-
-  // ---- state / buffers ----
-  let N=10000, intervalMs=200, rho=0, running=false;
-  const WINDOW=2600;
-  let xs=[], dev=[], e95=[], e99=[];
-  let last=null, dirty=false;
-
-  worker.postMessage({cmd:'config',N,intervalMs,rho});
-
-  // ---- canvas ----
-  const cv=$('chart'), ctx=cv.getContext('2d');
-  function sizeCanvas(){
-    const dpr=Math.min(window.devicePixelRatio||1,2);
-    const w=cv.clientWidth, h=320;
-    cv.width=w*dpr; cv.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
-    dirty=true;
-  }
-  window.addEventListener('resize',sizeCanvas);
-
-  function fmt(n){ return n.toLocaleString('en-US'); }
-  function oddsStr(p){
-    if(!isFinite(p)||p<=0) return '> 1,000,000 : 1';
-    const o=1/p;
-    if(o>=1e6) return '> 1,000,000 : 1';
-    if(o>=1000) return Math.round(o/100)*100 + ' : 1';
-    if(o>=10) return Math.round(o) + ' : 1';
-    return o.toFixed(1)+' : 1';
-  }
-
-  function draw(){
-    if(dirty && xs.length){
-      const w=cv.clientWidth, h=320, padL=8, padR=8, padT=14, padB=18;
-      ctx.clearRect(0,0,w,h);
-      const n=xs.length;
-      let yMax=1;
-      for(let i=0;i<n;i++){ yMax=Math.max(yMax, Math.abs(dev[i]), e99[i]); }
-      yMax*=1.18;
-      const X=i=> padL + (w-padL-padR)*(i/(n-1||1));
-      const Y=v=> (h-padB) - ( (v+yMax)/(2*yMax) )*(h-padT-padB);
-
-      // baseline grid
-      ctx.strokeStyle='rgba(120,150,200,0.10)'; ctx.lineWidth=1;
-      ctx.beginPath();
-      for(let g=-1;g<=1;g+=0.5){ const yy=Y(g*yMax*0.66); ctx.moveTo(padL,yy); ctx.lineTo(w-padR,yy); }
-      ctx.stroke();
-
-      // envelope band p=.05
-      ctx.fillStyle='rgba(120,150,200,0.07)';
-      ctx.beginPath();
-      for(let i=0;i<n;i++){ const x=X(i); const y=Y(1.96*e95[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
-      for(let i=n-1;i>=0;i--){ ctx.lineTo(X(i),Y(-1.96*e95[i])); }
-      ctx.closePath(); ctx.fill();
-
-      // envelope lines p=.01
-      const drawEnv=(mult,col)=>{
-        ctx.strokeStyle=col; ctx.lineWidth=1; ctx.setLineDash([4,4]);
-        ctx.beginPath(); for(let i=0;i<n;i++){const x=X(i),y=Y(mult*e99[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke();
-        ctx.beginPath(); for(let i=0;i<n;i++){const x=X(i),y=Y(-mult*e99[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke();
-        ctx.setLineDash([]);
-      };
-      drawEnv(2.576,'rgba(150,170,210,0.30)');
-
-      // zero line
-      ctx.strokeStyle='rgba(180,200,230,0.32)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(padL,Y(0)); ctx.lineTo(w-padR,Y(0)); ctx.stroke();
-
-      // trace
-      const cur=dev[n-1], env99=2.576*e99[n-1];
-      const breach=Math.abs(cur)>env99;
-      const col = breach ? '#ff5c7a' : '#67e0ff';
-      ctx.shadowColor=col; ctx.shadowBlur=10;
-      ctx.strokeStyle=col; ctx.lineWidth=1.6;
-      ctx.beginPath(); for(let i=0;i<n;i++){const x=X(i),y=Y(dev[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke();
-      ctx.shadowBlur=0;
-      // head dot
-      ctx.fillStyle=col; ctx.beginPath(); ctx.arc(X(n-1),Y(cur),3,0,7); ctx.fill();
-    }
-    dirty=false;
-    requestAnimationFrame(draw);
-  }
-
-  // ---- readout + banner ----
-  function updateUI(s){
-    $('m_n').textContent=fmt(N);
-    $('m_t').textContent=fmt(s.t);
-
-    const vEl=$('m_var'); vEl.textContent=s.sampleVar.toFixed(3);
-    vEl.className='val '+(s.sampleVar<0.985?'hot':s.sampleVar>1.015?'cold':'');
-
-    const coh=s.cumCohZ;
-    const cEl=$('m_coh'); cEl.textContent=(coh>=0?'+':'')+coh.toFixed(2)+'σ';
-    cEl.className='val '+(coh>3.09?'alert':coh>1.96?'hot':coh<-1.96?'cold':'');
-    const pCoh=2*(1-cdf(Math.abs(coh)));
-    $('m_odds').textContent='odds vs chance ' + oddsStr(pCoh);
-
-    $('m_z').textContent=(s.stoufferZ>=0?'+':'')+s.stoufferZ.toFixed(2);
-    $('m_p').textContent='p = '+ (s.instP<0.001? s.instP.toExponential(1) : s.instP.toFixed(3));
-
-    const sig=s.cumDev/(s.envSD||1);
-    $('m_dev').textContent=(s.cumDev>=0?'+':'')+Math.round(s.cumDev).toLocaleString('en-US');
-    $('m_devsig').textContent=(sig>=0?'+':'')+sig.toFixed(2)+' σ from chance';
-
-    // meter (driven by coherence Z, clamp ±4σ -> ±50%)
-    const frac=Math.max(-1,Math.min(1,coh/4));
-    const fill=$('fill');
-    if(frac>=0){ fill.style.left='50%'; fill.style.width=(frac*50)+'%'; fill.style.background='linear-gradient(90deg,rgba(255,194,77,0.5),var(--warn))'; }
-    else{ fill.style.width=(-frac*50)+'%'; fill.style.left=(50+frac*50)+'%'; fill.style.background='linear-gradient(90deg,var(--trace),rgba(103,224,255,0.5))'; }
-    $('meterstate').textContent = coh>1.96?'converging':coh<-1.96?'dispersing':'independent';
-
-    // banner
-    const b=$('banner'), gl=$('bglyph'), ld=$('blead'), dt=$('bdet');
-    b.classList.remove('warn','alert');
-    if(coh>3.09){ b.classList.add('alert'); gl.textContent='⚠'; ld.textContent='ANOMALOUS COHERENCE'; dt.textContent='— inter-generator randomness suppressed beyond chance (p < 0.001).'; }
-    else if(coh>1.96){ b.classList.add('warn'); gl.textContent='◐'; ld.textContent='MARGINAL COHERENCE'; dt.textContent='— channels mildly converging (p < 0.05).'; }
-    else if(coh<-3.09){ b.classList.add('alert'); gl.textContent='⚠'; ld.textContent='ANOMALOUS DIVERGENCE'; dt.textContent='— excess inter-generator variance (p < 0.001).'; }
-    else if(coh<-1.96){ b.classList.add('warn'); gl.textContent='◐'; ld.textContent='MARGINAL DIVERGENCE'; dt.textContent='— variance running above chance (p < 0.05).'; }
-    else{ gl.textContent='●'; ld.textContent='NOMINAL'; dt.textContent='— randomness within chance expectation across the network.'; }
-  }
-  // local normal cdf for odds display
-  function cdf(x){ const t=1/(1+0.3275911*Math.abs(x)/Math.SQRT2);
-    const e=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x/2);
-    return x>=0?0.5*(1+e):0.5*(1-e); }
-
-  // ---- worker messages ----
-  worker.onmessage=(ev)=>{
-    const m=ev.data;
-    if(m.type==='reset'){ xs=[];dev=[];e95=[];e99=[]; last=null; dirty=true; resetReadouts(); return; }
-    if(m.type==='sample'){
-      last=m;
-      xs.push(m.t); dev.push(m.cumDev); e95.push(m.envSD); e99.push(m.envSD);
-      if(xs.length>WINDOW){ xs.shift();dev.shift();e95.shift();e99.shift(); }
-      updateUI(m); dirty=true;
-    }
-  };
-  function resetReadouts(){
-    $('m_t').textContent='0'; $('m_var').textContent='—'; $('m_coh').textContent='—';
-    $('m_odds').textContent='odds vs chance —'; $('m_z').textContent='—'; $('m_p').textContent='p = —';
-    $('m_dev').textContent='—'; $('m_devsig').textContent='— σ from chance';
-    $('fill').style.width='0'; $('meterstate').textContent='independent';
-    const b=$('banner'); b.classList.remove('warn','alert');
-    $('bglyph').textContent='●'; $('blead').textContent='STANDBY'; $('bdet').textContent='— press RUN to begin sampling the network.';
-  }
-
-  // ---- controls ----
-  $('run').addEventListener('click',()=>{
-    running=!running;
-    const btn=$('run');
-    if(running){ btn.textContent='❚❚ Pause'; btn.classList.add('run'); $('livedot').style.background='var(--warn)'; worker.postMessage({cmd:'start'}); }
-    else{ btn.textContent='▶ Run'; btn.classList.remove('run'); $('livedot').style.background='var(--nominal)'; worker.postMessage({cmd:'pause'}); }
-  });
-  $('reset').addEventListener('click',()=>{ worker.postMessage({cmd:'reset'}); });
-  $('size').addEventListener('change',e=>{
-    N=parseInt(e.target.value,10);
-    // auto-raise interval for huge networks
-    if(N>=1000000 && intervalMs<1000){ intervalMs=1000; $('rate').value='1000'; }
-    worker.postMessage({cmd:'config',N,intervalMs,rho});
-    worker.postMessage({cmd:'reset'});
-    if(running){ worker.postMessage({cmd:'start'}); }
-  });
-  $('rate').addEventListener('change',e=>{ intervalMs=parseInt(e.target.value,10); worker.postMessage({cmd:'interval',intervalMs}); });
-  $('rho').addEventListener('input',e=>{
-    rho=parseFloat(e.target.value);
-    $('rhoval').textContent=rho.toFixed(2);
-    $('rho2').textContent=(rho*rho*100).toFixed(1)+'%';
-    worker.postMessage({cmd:'rho',rho});
-  });
-
-  // optional verified-quantum seed (graceful failure)
-  $('seed').addEventListener('click',async()=>{
-    const note=$('seednote');
-    note.textContent='Requesting verified-quantum value from NIST beacon…';
-    try{
-      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),6000);
-      const r=await fetch('https://beacon.nist.gov/beacon/2.0/pulse/last',{signal:ctrl.signal});
-      clearTimeout(to);
-      const j=await r.json();
-      const v=(j.pulse&&j.pulse.outputValue)||(j.pulse&&j.pulse.localRandomValue)||'';
-      note.textContent='Verified-quantum value mixed in: '+v.slice(0,24).toLowerCase()+'…  (entropy stream remains the local CSPRNG; this is a provenance marker)';
-    }catch(err){
-      note.textContent='Quantum-seed blocked in-browser (CORS) — works when self-hosted with a proxy. Stream continues on the local CSPRNG.';
-    }
-  });
-
-  // boot
-  sizeCanvas();
-  resetReadouts();
-  requestAnimationFrame(draw);
-</script>
-</body>
-</html>
+        async function fetchAll() {
+            const container = document.getElementById('sources');
+            container.innerHTML = '<p>Fetching...</p>';
+            const results = await Promise.all(sources.map(fetchSource));
+            
+            container.innerHTML = '';
+            results.forEach(res => {
+                const div = document.createElement('div');
+                div.className = 'source';
+                if (res.success) {
+                    div.innerHTML = `
+                        <strong>${res.name}</strong><br>
+                        <span class="data">${res.numbers.slice(0,20).join(' ')}...</span><br>
+                        <small>Mean: ${(res.numbers.reduce((a
