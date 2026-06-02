@@ -3,591 +3,447 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Geomagnetic Coherence Monitor</title>
+<title>SYNCHRONICITY_MACHINE//</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#04060c; --bg2:#0a0f1c; --bg3:#0d1426;
-    --panel:rgba(12,18,34,.72); --panelEdge:#1d2a45; --hair:#27375a;
-    --txt:#cfd9ef; --dim:#7a89a6; --faint:#4c5a76;
-    --teal:#37e6c6; --blue:#5fa0ff; --violet:#b98bff;
-    --amber:#e7b34f; --rose:#ff5d86; --green:#41e08c;
-    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
-    --sans:'IBM Plex Sans',system-ui,sans-serif;
-    --disp:'Chakra Petch','IBM Plex Mono',monospace;
+    --grn:#00ff66; --grn2:#19c25a; --grndim:#0c8a3e; --grnfaint:#0a5a2c;
+    --bg:#000600; --panel:rgba(2,18,7,.84); --edge:#0e5a2f; --hair:rgba(0,255,102,.16);
+    --txt:#86f5ac; --bright:#d2ffdd; --dim:#3f9c5f; --faint:#236b3a;
+    --amber:#ffd23f; --red:#ff4d5e;
+    --mono:'Share Tech Mono',ui-monospace,Menlo,monospace;
+    --crt:'VT323','Share Tech Mono',monospace;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;padding:0}
-  body{
-    background:
-      radial-gradient(1200px 600px at 78% -8%, rgba(55,230,198,.10), transparent 60%),
-      radial-gradient(900px 500px at -5% 18%, rgba(95,160,255,.10), transparent 55%),
-      radial-gradient(700px 700px at 50% 120%, rgba(185,139,255,.07), transparent 60%),
-      linear-gradient(180deg,var(--bg),var(--bg2) 45%,var(--bg) 100%);
-    background-attachment:fixed;
-    color:var(--txt); font-family:var(--sans);
-    min-height:100vh; line-height:1.5; overflow-x:hidden;
-    padding:14px 14px calc(34px + env(safe-area-inset-bottom));
-  }
-  /* faint grid texture */
-  body::before{
-    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
-    background-image:
-      linear-gradient(rgba(120,150,200,.045) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(120,150,200,.045) 1px,transparent 1px);
-    background-size:42px 42px; mask-image:radial-gradient(circle at 50% 30%,#000 30%,transparent 85%);
-  }
+  html,body{margin:0;padding:0;background:#000}
+  body{background:var(--bg);color:var(--txt);font-family:var(--mono);min-height:100vh;line-height:1.45;overflow-x:hidden;
+    padding:14px 13px calc(34px + env(safe-area-inset-bottom));position:relative}
+  #rain{position:fixed;inset:0;z-index:0;opacity:.42;pointer-events:none}
+  body::after{content:"";position:fixed;inset:0;z-index:60;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 2px,rgba(0,20,6,.22) 3px,rgba(0,0,0,0) 4px),
+    radial-gradient(120% 100% at 50% 50%,transparent 60%,rgba(0,0,0,.55) 100%);
+    animation:flick 5s infinite}
   .wrap{max-width:720px;margin:0 auto;position:relative;z-index:1}
+  ::selection{background:rgba(0,255,102,.3);color:#fff}
 
-  /* ---- header ---- */
-  header{
-    position:relative;overflow:hidden;border:1px solid var(--panelEdge);
-    border-radius:16px;padding:18px 18px 16px;background:var(--panel);
-    backdrop-filter:blur(8px);box-shadow:0 18px 50px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.04);
-    opacity:0;transform:translateY(8px);animation:rise .7s .02s forwards cubic-bezier(.2,.7,.2,1);
-  }
-  header .aurora{
-    position:absolute;inset:-40% -10% auto -10%;height:120%;z-index:0;filter:blur(34px);opacity:.5;
-    background:conic-gradient(from 120deg at 30% 40%, rgba(55,230,198,.5),rgba(95,160,255,.35),rgba(185,139,255,.4),rgba(55,230,198,.5));
-    animation:drift 22s linear infinite;
-  }
-  header .hgrid{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-  .codetag{font-family:var(--mono);font-size:10.5px;letter-spacing:.32em;color:var(--teal);text-transform:uppercase}
-  h1{font-family:var(--disp);font-weight:600;font-size:clamp(20px,5.4vw,28px);margin:6px 0 2px;letter-spacing:.02em;line-height:1.05}
-  .sub{font-family:var(--mono);font-size:11.5px;color:var(--dim);letter-spacing:.02em;max-width:46ch}
-  .badge{flex:0 0 auto;display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;
-    letter-spacing:.14em;padding:6px 10px;border-radius:999px;border:1px solid var(--hair);background:rgba(7,11,20,.6);text-transform:uppercase;white-space:nowrap}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);box-shadow:0 0 0 0 rgba(0,0,0,0)}
-  .badge.live .dot{background:var(--green);animation:pulse 1.8s ease-out infinite}
-  .badge.live{color:var(--green);border-color:rgba(65,224,140,.35)}
-  .badge.sim .dot{background:var(--amber)}
-  .badge.sim{color:var(--amber);border-color:rgba(231,179,79,.35)}
+  .glitch{animation:gl .42s steps(2) 1}
+  @keyframes gl{0%{transform:translate(0,0)}20%{transform:translate(-3px,1px)}40%{transform:translate(3px,-2px);filter:hue-rotate(40deg)}
+    60%{transform:translate(-2px,-1px)}80%{transform:translate(2px,1px);filter:hue-rotate(-30deg)}100%{transform:translate(0,0)}}
+  @keyframes flick{0%,97%,100%{opacity:1}98%{opacity:.82}99%{opacity:.94}}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  .cur{display:inline-block;width:9px;height:1em;background:var(--grn);vertical-align:-2px;animation:blink 1.1s steps(1) infinite;box-shadow:0 0 6px var(--grn)}
 
-  /* loud honesty banner for simulated mode */
-  .simbanner{display:none;margin-top:12px;border:1px solid rgba(231,179,79,.4);background:rgba(231,179,79,.08);
-    border-radius:12px;padding:11px 13px;font-family:var(--mono);font-size:11.5px;color:#f0d49a;line-height:1.55}
-  .simbanner.show{display:block}
-  .simbanner b{color:var(--amber);letter-spacing:.06em}
+  .term{border:1px solid var(--edge);border-radius:6px;background:var(--panel);
+    box-shadow:0 0 0 1px rgba(0,0,0,.4),0 18px 40px -26px #000, inset 0 0 30px -18px rgba(0,255,102,.25)}
+  header{position:relative;padding:15px 16px 13px;overflow:hidden}
+  header.term{margin-bottom:0}
+  .hgrid{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .codetag{font-size:11px;letter-spacing:.28em;color:var(--grn);text-shadow:0 0 8px rgba(0,255,102,.6);text-transform:uppercase}
+  h1{font-family:var(--crt);font-weight:400;font-size:clamp(30px,9vw,52px);margin:2px 0 0;letter-spacing:.04em;line-height:.92;color:var(--bright);text-shadow:0 0 12px rgba(0,255,102,.55),0 0 2px var(--grn)}
+  .sub{font-size:12px;color:var(--dim);margin-top:6px;max-width:50ch}
+  .rcol{flex:0 0 auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .badge{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:.13em;padding:5px 9px;border-radius:4px;border:1px solid var(--edge);background:rgba(0,0,0,.5);text-transform:uppercase;white-space:nowrap}
+  .dot{width:8px;height:8px;border-radius:1px;background:var(--faint)}
+  .badge.live .dot{background:var(--grn);box-shadow:0 0 8px var(--grn);animation:blink 1.4s steps(1) infinite}.badge.live{color:var(--grn)}
+  .badge.partial .dot{background:var(--amber);box-shadow:0 0 8px var(--amber)}.badge.partial{color:var(--amber)}
+  .badge.ctrl .dot{background:var(--dim)}.badge.ctrl{color:var(--dim)}
+  .sesh{font-size:10.5px;letter-spacing:.12em;color:var(--faint)}
+  .simbanner{display:none;margin-top:12px;border:1px solid var(--edge);background:rgba(0,40,14,.4);border-radius:5px;padding:10px 12px;font-size:11.5px;color:var(--txt);line-height:1.55}
+  .simbanner.show{display:block}.simbanner b{color:var(--grn);text-shadow:0 0 6px rgba(0,255,102,.5)}
+  .simbanner code{color:var(--bright);background:rgba(0,255,102,.12);padding:1px 5px;border-radius:3px}
 
-  /* ---- hero stats ---- */
-  .hero{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
-  .stat{border:1px solid var(--panelEdge);border-radius:14px;padding:13px 14px;background:var(--panel);backdrop-filter:blur(8px);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);opacity:0;transform:translateY(8px);animation:rise .7s forwards cubic-bezier(.2,.7,.2,1)}
-  .stat:nth-child(1){animation-delay:.06s}.stat:nth-child(2){animation-delay:.1s}
-  .stat:nth-child(3){animation-delay:.14s}.stat:nth-child(4){animation-delay:.18s}
-  .stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
-  .stat .v{font-family:var(--disp);font-weight:600;font-size:clamp(26px,8vw,38px);line-height:1.05;margin-top:5px;letter-spacing:.01em;
-    font-variant-numeric:tabular-nums}
-  .stat .u{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:3px}
-  #zVal{color:var(--teal)}
-  .state{grid-column:1 / -1;display:flex;align-items:center;gap:13px;border-radius:14px;padding:13px 15px;
-    border:1px solid var(--panelEdge);background:var(--panel);backdrop-filter:blur(8px);
-    opacity:0;transform:translateY(8px);animation:rise .7s .22s forwards cubic-bezier(.2,.7,.2,1)}
-  .state .ring{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:2px solid var(--green);
-    display:grid;place-items:center;box-shadow:0 0 18px -2px var(--green);transition:.4s}
-  .state .ring i{width:12px;height:12px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);transition:.4s}
-  .state .txt{min-width:0}
-  .state .lab{font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.06em}
-  .state .desc{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.45;margin-top:2px}
+  .gaugeCard{margin-top:12px;padding:12px 14px 8px}
+  #gauge{display:block;width:100%}
+  .verdict{text-align:center;margin-top:2px}
+  .verdict .lab{font-family:var(--crt);font-size:26px;letter-spacing:.04em;line-height:1}
+  .verdict .desc{font-size:11.5px;color:var(--dim);line-height:1.45;margin-top:5px;max-width:52ch;margin-inline:auto}
 
-  /* ---- panels ---- */
-  .panel{margin-top:12px;border:1px solid var(--panelEdge);border-radius:16px;padding:14px 14px 10px;background:var(--panel);
-    backdrop-filter:blur(8px);box-shadow:0 18px 50px -34px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03);
-    opacity:0;transform:translateY(8px);animation:rise .7s forwards cubic-bezier(.2,.7,.2,1)}
-  .panel.p1{animation-delay:.26s}.panel.p2{animation-delay:.3s}.panel.p3{animation-delay:.34s}
+  .hero{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:12px}
+  .stat{padding:11px 13px}
+  .stat .k{font-size:9.5px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+  .stat .v{font-family:var(--crt);font-size:clamp(30px,9vw,44px);line-height:.95;margin-top:3px;color:var(--bright);text-shadow:0 0 10px rgba(0,255,102,.4)}
+  .stat .u{font-size:10px;color:var(--faint);margin-top:3px}
+
+  .panel{margin-top:12px;padding:13px 14px 11px}
   .ptop{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}
-  .ptitle{font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.08em}
-  .pmeta{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;text-align:right}
-  .legend{display:flex;flex-wrap:wrap;gap:13px;margin:2px 0 8px;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
-  .legend span{display:inline-flex;align-items:center;gap:6px}
-  .swatch{width:13px;height:3px;border-radius:2px;display:inline-block}
-  canvas{display:block;width:100%;border-radius:8px}
+  .ptitle{font-size:13px;letter-spacing:.06em;color:var(--grn);text-shadow:0 0 7px rgba(0,255,102,.4)}
+  .ptitle b{color:var(--dim);font-weight:400}
+  .pmeta{font-size:10px;color:var(--faint);letter-spacing:.05em;text-align:right}
+  canvas.chart{display:block;width:100%;border-radius:4px}
+  .hint{font-size:10px;color:var(--faint);margin-top:7px;line-height:1.5}
 
-  /* telemetry strip */
-  .tele{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-  .cell{border:1px solid var(--hair);border-radius:10px;padding:9px 11px;background:rgba(6,10,18,.5)}
-  .cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
-  .cell .v{font-family:var(--mono);font-size:13px;color:var(--txt);margin-top:3px;word-break:break-all;font-variant-numeric:tabular-nums}
+  .catrow{display:flex;align-items:center;gap:8px;margin:11px 0 4px;font-size:10px;letter-spacing:.22em;color:var(--grndim);text-transform:uppercase}
+  .catrow::before,.catrow::after{content:"";height:1px;background:var(--hair);flex:1}
+  .src{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:6px 2px}
+  .src .sdot{width:9px;height:9px;border-radius:1px;background:var(--faint);flex:0 0 auto}
+  .src.on .sdot{box-shadow:0 0 7px currentColor}
+  .src .nm{font-size:12px;color:var(--txt);display:flex;align-items:center;gap:7px;flex-wrap:wrap;letter-spacing:.03em}
+  .src .tag{font-size:8px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;border:1px solid var(--hair);border-radius:3px;padding:1px 4px}
+  .src .desc{font-size:9px;color:var(--faint);margin-top:1px}
+  .src .barwrap{position:relative;height:15px;margin-top:4px;background:rgba(0,0,0,.45);border-radius:3px;overflow:hidden;border:1px solid var(--hair)}
+  .src .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(0,255,102,.25)}
+  .src .bar{position:absolute;top:2px;bottom:2px;border-radius:2px;transition:width .35s ease,left .35s ease,background .35s,box-shadow .35s}
+  .src .zv{font-size:12px;color:var(--dim);text-align:right;min-width:50px}
+  .src.off{opacity:.42}
 
-  /* methodology */
-  details{margin-top:12px;border:1px solid var(--panelEdge);border-radius:16px;background:var(--panel);backdrop-filter:blur(8px);overflow:hidden;
-    opacity:0;transform:translateY(8px);animation:rise .7s .38s forwards cubic-bezier(.2,.7,.2,1)}
-  summary{cursor:pointer;list-style:none;padding:14px 16px;font-family:var(--disp);font-weight:600;font-size:13px;letter-spacing:.06em;
-    display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .log{font-size:11px;line-height:1.6;color:var(--grn2);height:148px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+  .log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .log .t{color:var(--faint)}
+  .log .a{color:var(--amber)}.log .r{color:var(--red)}
+
+  .tele{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .cell{border:1px solid var(--hair);border-radius:4px;padding:8px 10px;background:rgba(0,0,0,.4)}
+  .cell .k{font-size:9px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+  .cell .v{font-size:13px;color:var(--txt);margin-top:3px;word-break:break-all}
+
+  details{margin-top:12px;overflow:hidden}
+  summary{cursor:pointer;list-style:none;padding:13px 15px;font-size:13px;letter-spacing:.05em;color:var(--grn);display:flex;align-items:center;justify-content:space-between;gap:10px}
   summary::-webkit-details-marker{display:none}
-  summary .chev{font-family:var(--mono);color:var(--teal);transition:.3s;font-size:14px}
+  summary .chev{color:var(--grn);transition:.3s}
   details[open] summary .chev{transform:rotate(90deg)}
-  .method{padding:0 16px 16px;font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.65}
-  .method h4{font-family:var(--disp);font-size:11px;letter-spacing:.14em;color:var(--teal);text-transform:uppercase;margin:14px 0 5px}
-  .method p{margin:0 0 8px}
-  .method code{color:var(--blue);background:rgba(95,160,255,.1);padding:1px 5px;border-radius:4px}
-  .method .warn{color:#f0d49a}
+  .method{padding:0 15px 15px;font-size:11.5px;color:var(--dim);line-height:1.65}
+  .method h4{font-size:11px;letter-spacing:.12em;color:var(--grn);text-transform:uppercase;margin:13px 0 5px}
+  .method p{margin:0 0 8px}.method code{color:var(--bright);background:rgba(0,255,102,.1);padding:1px 5px;border-radius:3px}
+  .method .warn{color:var(--amber)}
 
-  footer{margin-top:18px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.05em;line-height:1.7}
-  footer a{color:var(--dim);text-decoration:none;border-bottom:1px dotted var(--hair)}
-
-  @keyframes rise{to{opacity:1;transform:none}}
-  @keyframes drift{0%{transform:rotate(0deg) scale(1.1)}100%{transform:rotate(360deg) scale(1.1)}}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(65,224,140,.55)}70%{box-shadow:0 0 0 9px rgba(65,224,140,0)}100%{box-shadow:0 0 0 0 rgba(65,224,140,0)}}
-  @media (max-width:430px){ .tele{grid-template-columns:1fr} }
-  @media (prefers-reduced-motion:reduce){ *{animation-duration:.001s!important} header .aurora{animation:none} }
+  footer{margin-top:18px;text-align:center;font-size:10px;color:var(--faint);letter-spacing:.05em;line-height:1.7}
+  @media (max-width:430px){.tele{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){body::after{animation:none}.glitch{animation:none}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<canvas id="rain"></canvas>
+<div class="wrap" id="wrap">
 
-  <header>
-    <div class="aurora"></div>
+  <header class="term">
     <div class="hgrid">
       <div style="min-width:0">
-        <div class="codetag">HELIOS · RTSW-L1</div>
-        <h1>Geomagnetic Coherence Monitor</h1>
-        <div class="sub">Live interplanetary magnetic field → detrended residual → Stouffer&nbsp;Z against a frozen null. No tunable knobs. The field reports itself.</div>
+        <div class="codetag">// REAL-TIME COHERENCE TAP</div>
+        <h1>SYNCHRONICITY<br>MACHINE<span class="cur"></span></h1>
+        <div class="sub">Eleven unrelated live feeds, each read as a standardized deviation. Watching for the moment the noise falls into agreement.</div>
       </div>
-      <div id="badge" class="badge sim"><span class="dot"></span><span id="badgeText">INIT</span></div>
+      <div class="rcol">
+        <div id="badge" class="badge ctrl"><span class="dot"></span><span id="badgeText">BOOT</span></div>
+        <div class="sesh" id="sesh">UPTIME 00:00:00</div>
+      </div>
     </div>
     <div id="simbanner" class="simbanner">
-      <b>SIMULATED STREAM.</b> The live NOAA feed could not be reached from this sandbox, so the console is running a physically-modeled IMF so you can see it work. The statistics below are computed on synthetic data and mean nothing about the real field. Host this file on your own page/phone for guaranteed live data — the endpoint is <code style="color:#f0d49a">services.swpc.noaa.gov/products/solar-wind/mag-1-day.json</code>.
+      <b>CONTROL ONLY //</b> no external feed reachable from this sandbox — running on the two local crypto null-arms, which is the calibration baseline (independent randomness must <em>not</em> cohere). Self-host the file to open the full tap. Feeds attempted: <code>NOAA · USGS · Open-Meteo · drand · NIST · Coinbase · Wikimedia · Bluesky · HN</code>.
     </div>
   </header>
 
+  <div class="term gaugeCard">
+    <canvas id="gauge"></canvas>
+    <div class="verdict">
+      <div class="lab" id="vLab">CALIBRATING</div>
+      <div class="desc" id="vDesc">Tapping the constellation and spinning up the null arms…</div>
+    </div>
+  </div>
+
   <div class="hero">
-    <div class="stat"><div class="k">Stouffer Z</div><div class="v" id="zVal">–</div><div class="u" id="zSub">cumulative · session</div></div>
-    <div class="stat"><div class="k">Deviation</div><div class="v" id="sigVal">–</div><div class="u">σ from expectation</div></div>
-    <div class="stat"><div class="k">Two-tailed p</div><div class="v" id="pVal" style="font-size:clamp(20px,6.4vw,28px)">–</div><div class="u">under the null</div></div>
-    <div class="stat"><div class="k">95% CI · mean shift δ̂</div><div class="v" id="ciVal" style="font-size:clamp(16px,5vw,22px)">–</div><div class="u">per-sample, standardized</div></div>
-
-    <div class="state">
-      <div class="ring" id="stateRing"><i></i></div>
-      <div class="txt">
-        <div class="lab" id="stateLab">CALIBRATING</div>
-        <div class="desc" id="stateDesc">Loading field history and freezing the null parameters…</div>
-      </div>
-    </div>
+    <div class="term stat"><div class="k">Coherence Z</div><div class="v" id="zcVal">–</div><div class="u" id="zcSub">cumulative // session</div></div>
+    <div class="term stat"><div class="k">p // vs chance</div><div class="v" id="pVal" style="font-size:clamp(22px,6.6vw,32px)">–</div><div class="u">two-tailed</div></div>
+    <div class="term stat"><div class="k">Active arms</div><div class="v" id="nSrc">–</div><div class="u" id="nSub">in the tap</div></div>
+    <div class="term stat"><div class="k">Live netvar</div><div class="v" id="cVal">–</div><div class="u">χ²₁ baseline = 1</div></div>
   </div>
 
-  <div class="panel p1">
-    <div class="ptop">
-      <div class="ptitle">INTERPLANETARY MAGNETIC FIELD</div>
-      <div class="pmeta" id="fieldMeta">— nT · L1</div>
-    </div>
-    <div class="legend">
-      <span><i class="swatch" style="background:var(--teal);box-shadow:0 0 7px var(--teal)"></i>|B| total</span>
-      <span><i class="swatch" style="background:var(--blue)"></i>Bz (GSM)</span>
-      <span><i class="swatch" style="background:var(--faint);height:2px"></i>baseline (detrend)</span>
-    </div>
-    <canvas id="fieldCanvas"></canvas>
+  <div class="term panel p1">
+    <div class="ptop"><div class="ptitle">> THE CONSTELLATION<b>.dat</b></div><div class="pmeta" id="constMeta">σ-deviation per arm</div></div>
+    <div id="sources"></div>
   </div>
 
-  <div class="panel p2">
-    <div class="ptop">
-      <div class="ptitle">CUMULATIVE DEVIATION</div>
-      <div class="pmeta" id="cumMeta">random walk · Σz</div>
-    </div>
-    <div class="legend">
-      <span><i class="swatch" style="background:var(--teal);box-shadow:0 0 7px var(--teal)"></i>Σ z (observed)</span>
-      <span><i class="swatch" style="background:var(--amber)"></i>±1.96·√N (p=.05)</span>
-      <span><i class="swatch" style="background:var(--rose)"></i>±3·√N</span>
-    </div>
-    <canvas id="cumCanvas"></canvas>
+  <div class="term panel p2">
+    <div class="ptop"><div class="ptitle">> CUMULATIVE COHERENCE</div><div class="pmeta">Σ(χ²−1) walk</div></div>
+    <canvas id="walk" class="chart"></canvas>
+    <div class="hint">↑ above band = sustained <span style="color:var(--amber)">order</span> · flat inside = <span style="color:var(--grn)">chaos / chance</span> · ↓ below = over-dispersion. Bands approximate, calibrated by null arms.</div>
   </div>
 
-  <div class="panel p3">
-    <div class="ptop"><div class="ptitle">TELEMETRY</div><div class="pmeta">frozen null · live tail</div></div>
+  <div class="term panel p3">
+    <div class="ptop"><div class="ptitle">> LIVE NETWORK PULSE</div><div class="pmeta">netvar / epoch</div></div>
+    <canvas id="pulse" class="chart"></canvas>
+  </div>
+
+  <div class="term panel">
+    <div class="ptop"><div class="ptitle">> SYSTEM LOG</div><div class="pmeta">tail -f</div></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="term panel">
+    <div class="ptop"><div class="ptitle">> TELEMETRY</div><div class="pmeta">continuous</div></div>
     <div class="tele">
-      <div class="cell"><div class="k">Test samples N</div><div class="v" id="tN">–</div></div>
-      <div class="cell"><div class="k">Null σ (frozen)</div><div class="v" id="tSig">–</div></div>
-      <div class="cell"><div class="k">Sampling</div><div class="v">1 / 5 min · detrended Bt</div></div>
-      <div class="cell"><div class="k">Source craft</div><div class="v" id="tCraft">DSCOVR · NOAA SWPC</div></div>
-      <div class="cell"><div class="k">Field window</div><div class="v" id="tWin">–</div></div>
-      <div class="cell"><div class="k">Last update</div><div class="v" id="tUpd">–</div></div>
+      <div class="cell"><div class="k">Epochs N</div><div class="v" id="tN">–</div></div>
+      <div class="cell"><div class="k">Epoch</div><div class="v">2.0 s</div></div>
+      <div class="cell"><div class="k">Uptime</div><div class="v" id="tElapsed">00:00:00</div></div>
+      <div class="cell"><div class="k">Live / total arms</div><div class="v" id="tSrc">– / –</div></div>
     </div>
   </div>
 
-  <details>
-    <summary>METHODOLOGY &amp; HONEST CAVEATS <span class="chev">›</span></summary>
+  <details class="term">
+    <summary>> README // WHAT THIS IS NOT <span class="chev">▸</span></summary>
     <div class="method">
-      <h4>What it samples</h4>
-      <p>Real-time total interplanetary magnetic field <code>|B|</code> (Bt) measured at the L1 Lagrange point and published by NOAA/NWS Space Weather Prediction Center at roughly 1-minute cadence. The whole Sun → solar-wind → magnetosphere system is the physical generator; the spacecraft is the sampler.</p>
-      <h4>Baseline &amp; residual</h4>
-      <p>A trailing 31-minute moving average is removed: <code>residual = Bt − baseline</code>. This strips the slow, known geophysical drift and leaves the fast fluctuation, which is what we test. <span class="warn">Note: literal 27-day solar-rotation recurrence (comparing now against one rotation ago) is the stronger control but needs the SWPC archive endpoint; this self-contained build uses an in-feed rolling detrend, swappable for true recurrence when hosted server-side.</span></p>
-      <h4>The null is frozen, not fitted live</h4>
-      <p>Residual mean μ and SD σ are computed once from a reference window (the first ~70% of the first load) and then <em>frozen</em>. Every incoming residual is standardized <code>z = (r − μ) / σ</code> against that fixed reference, so the statistic can genuinely move if the live field departs from baseline.</p>
-      <h4>The statistic</h4>
-      <p>Test samples are thinned to <code>1 per 5 min</code> to limit autocorrelation, then combined: <code>Z = Σz / √N</code>, which is <code>N(0,1)</code> under the null. Deviation is <code>|Z|</code> in σ; two-tailed <code>p = 2(1 − Φ(|Z|))</code>; the 95% CI on the per-sample mean shift is <code>δ̂ ± 1.96/√N</code> with <code>δ̂ = Z/√N</code>. If the CI brackets 0, nothing is detected — which is the honest, expected result.</p>
-      <h4>Why this stays honest</h4>
-      <p class="warn">IMF fluctuations are autocorrelated and non-stationary, so the nominal √N envelope is approximate — real excursions almost always mean <em>space weather</em> (shocks, storms, diurnal structure), not consciousness. And if you run any null long enough you <em>will</em> cross p&lt;0.05 about 1 session in 20 by pure chance. That is calibration, not discovery. The field-state pill states the calibrated odds rather than claiming a "signal," and nothing here is user-adjustable.</p>
-      <p style="color:var(--faint);margin-top:12px">Data: NOAA/NWS Space Weather Prediction Center (public domain). This tool is independent and not affiliated with NOAA, GCP, or HeartMath.</p>
+      <h4>The idea</h4>
+      <p>Not a randomness test of one stream — the version the Global Consciousness Project actually measured: <em>coherence across a network of unrelated sources</em>. The signal is never any single feed; it's whether they fall into agreement more than independence allows.</p>
+      <h4>The eleven arms</h4>
+      <p>Grouped <b>Physical</b> (solar wind, seismic, barometric) · <b>Random</b> (two crypto null-arms, drand, NIST) · <b>Market</b> (BTC tape) · <b>Human</b> (Wikipedia, Bluesky, Hacker News). Each is read each epoch and standardized against its own running baseline (EWMA) into a deviation <code>zᵢ</code>. Sources are chosen to be <em>causally unrelated</em>.</p>
+      <h4>The metric</h4>
+      <p>Per epoch <code>Z = Σzᵢ/√N</code> over active arms; coherence <code>c = Z²</code>, which is <code>χ²₁</code> (mean 1) under independence. Co-movement makes <code>|Σzᵢ|</code> large → <code>c</code> spikes. The walk is <code>Σ(c−1)</code>; session significance <code>Zc = Σ(c−1)/√(2N)</code> ≈ N(0,1) under the null.</p>
+      <h4>Why the null arms matter</h4>
+      <p>The two <code>crypto.getRandomValues</code> streams are genuinely independent N(0,1). They anchor calibration — watch pure chance refuse to synchronize — and make false coherence harder, not easier.</p>
+      <h4 class="warn">What this is NOT</h4>
+      <p class="warn">It measures <em>coincidence, not meaning</em>. Jung's synchronicity is the significance an observer projects onto a coincidence; no instrument supplies that. Bands are approximate (slow feeds repeat between updates → autocorrelation; null arms keep it honest). Beware <em>counterfeit synchrony</em> from shared causes — which is why a second crypto (≈BTC), the K-index (≈solar wind), and BTC mempool (≈price) were deliberately excluded. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by pure chance. That is calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
+      <p style="color:var(--faint);margin-top:12px">Public sources: NOAA SWPC · USGS · Open-Meteo · drand/League of Entropy · NIST Randomness Beacon · Wikimedia EventStreams · Bluesky Jetstream · Hacker News · Coinbase. Independent tool, unaffiliated.</p>
     </div>
   </details>
 
-  <footer>
-    GEOMAGNETIC COHERENCE MONITOR · honest null, real channel<br>
-    field data <a href="https://www.swpc.noaa.gov/products/real-time-solar-wind" target="_blank" rel="noopener">NOAA SWPC RTSW</a> · refreshes every 60s
-  </footer>
-
+  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>continuous live ensemble · extend the source registry to add arms · wake up</footer>
 </div>
 
 <script>
 (function(){
   "use strict";
-
-  // ---------- config ----------
-  var MAG_LOAD = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json";
-  var MAG_POLL = "https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json";
-  var BASE_WIN = 31;        // detrend moving-average window (samples ~ minutes)
-  var REF_FRAC = 0.70;      // fraction of first load used to freeze the null
-  var THIN_MS  = 5*60*1000; // one test sample per 5 minutes
-  var POLL_MS  = 60*1000;
-  var FIELD_VIEW_MS = 6*60*60*1000; // field trace shows last 6 h
-  var FETCH_TIMEOUT = 8000;
-
-  // ---------- state ----------
-  var S = {
-    live:false, mode:"init",
-    series:[],            // {t(ms), bt, bz} full current series (latest fetch)
-    muRef:0, sdRef:1, refFrozen:false, testStart:null,
-    seen:Object.create(null), // thinned bucket -> true
-    cum:[], sum:0, N:0,        // cumulative Σz session-persistent
-  };
-
   // ---------- math ----------
-  function erf(x){
-    var s=x<0?-1:1; x=Math.abs(x);
-    var a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
-    var t=1/(1+p*x);
-    var y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
-    return s*y;
-  }
-  function normCdf(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
-  function fmtP(z){
-    var az=Math.abs(z);
-    if(az>8.2) return "< 1e-16";
-    var p=2*(1-normCdf(az));
-    if(p>=0.001) return p.toFixed(3);
-    var e=p.toExponential(1); return e;
+  function erf(x){var s=x<0?-1:1;x=Math.abs(x);var a1=.254829592,a2=-.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=.3275911;var t=1/(1+p*x);var y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);return s*y;}
+  function normCdf(x){return .5*(1+erf(x/Math.SQRT2));}
+  function fmtP(z){var az=Math.abs(z);if(az>8.2)return "< 1e-16";var p=2*(1-normCdf(az));return p>=.001?p.toFixed(3):p.toExponential(1);}
+  function invNorm(p){if(p<=0)return -8;if(p>=1)return 8;
+    var a=[-39.6968302866538,220.946098424521,-275.928510446969,138.357751867269,-30.6647980661472,2.50662827745924],
+        b=[-54.4760987982241,161.585836858041,-155.698979859887,66.8013118877197,-13.2806815528857],
+        c=[-.00778489400243029,-.322396458041136,-2.40075827716184,-2.54973253934373,4.37466414146497,2.93816398269878],
+        d=[.00778469570904146,.32246712907004,2.445134137143,3.75440866190742],pl=.02425,ph=1-pl,q,r;
+    if(p<pl){q=Math.sqrt(-2*Math.log(p));return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+    if(p<=ph){q=p-.5;r=q*q;return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+    q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  function clampZ(z){return Math.max(-8,Math.min(8,z));}
+  function randU(){var b=new Uint32Array(1);crypto.getRandomValues(b);return (b[0]+.5)/4294967296;}
+  function hexU(hex){var h=(hex||"").slice(0,13);if(h.length<13)return randU();var v=parseInt(h,16);if(!isFinite(v))return randU();return (v+.5)/Math.pow(16,13);}
+  function Ewma(hl){this.a=1-Math.pow(2,-1/hl);this.m=0;this.v=1;this.init=false;}
+  Ewma.prototype.push=function(x){if(!isFinite(x))return 0;if(!this.init){this.m=x;this.v=1;this.init=true;return 0;}var z=(x-this.m)/Math.sqrt(Math.max(this.v,1e-9));var d=x-this.m;this.m+=this.a*d;this.v=(1-this.a)*(this.v+this.a*d*d);return clampZ(z);};
+
+  // ---------- sources ----------
+  var EPOCH_MS=2000, EPOCH_S=EPOCH_MS/1000;
+  function S(o){o.status=o.kind==='control'?'control':'init';o.z=0;o.has=false;o.last=null;o.prev='init';return o;}
+  var SRC=[
+    S({id:'solar',cat:'PHYSICAL',label:'SOLAR.WIND',kind:'external',color:'#00ff66',cad:'~60s',desc:'NOAA IMF |B| @ L1 — the Sun',ew:new Ewma(40)}),
+    S({id:'quake',cat:'PHYSICAL',label:'SEISMIC',kind:'external',color:'#39ff8f',cad:'~30s',desc:'USGS quakes/hr — the crust',ew:new Ewma(30)}),
+    S({id:'press',cat:'PHYSICAL',label:'BAROMETRIC',kind:'external',color:'#7dffb0',cad:'~5m',desc:'Open-Meteo surface pressure — weather',ew:new Ewma(24)}),
+    S({id:'ctrlA',cat:'RANDOM',label:'NULL.ALPHA',kind:'control',color:'#2f9c5f',cad:'epoch',desc:'crypto.getRandomValues — known noise'}),
+    S({id:'ctrlB',cat:'RANDOM',label:'NULL.BETA',kind:'control',color:'#2f9c5f',cad:'epoch',desc:'crypto.getRandomValues — known noise'}),
+    S({id:'cosmic',cat:'RANDOM',label:'DRAND.BEACON',kind:'external',color:'#46e6c0',cad:'~30s',desc:'League of Entropy — distributed randomness'}),
+    S({id:'nist',cat:'RANDOM',label:'NIST.QUANTUM',kind:'external',color:'#46e6c0',cad:'~60s',desc:'NIST randomness beacon — quantum source'}),
+    S({id:'market',cat:'MARKET',label:'BTC.TAPE',kind:'external',color:'#ffd23f',cad:'~8s',desc:'BTC-USD log-returns — markets',ew:new Ewma(50)}),
+    S({id:'crowd',cat:'HUMAN',label:'WIKI.STREAM',kind:'external',color:'#7db8ff',cad:'live',desc:'Wikipedia edits — collective attention',ew:new Ewma(60)}),
+    S({id:'bsky',cat:'HUMAN',label:'BLUESKY.FIREHOSE',kind:'external',color:'#7db8ff',cad:'live',desc:'Bluesky posts — social torrent',ew:new Ewma(60)}),
+    S({id:'hn',cat:'HUMAN',label:'HN.NEWITEMS',kind:'external',color:'#7db8ff',cad:'~20s',desc:'Hacker News new-item rate — tech crowd',ew:new Ewma(20)})
+  ];
+  var byId={};SRC.forEach(function(s){byId[s.id]=s;});
+  var CATS=['PHYSICAL','RANDOM','MARKET','HUMAN'];
+
+  var ST={start:Date.now(),N:0,sum:0,walk:[],pulse:[],cEW:1,cEWa:1-Math.pow(2,-1/15),glitchT:0,logT:0};
+  var LOG=[];
+
+  function p2(n){return (n<10?'0':'')+n;}
+  function clock(ms){var t=Math.floor(ms/1000);return p2(Math.floor(t/3600))+':'+p2(Math.floor(t/60)%60)+':'+p2(t%60);}
+  function logLine(txt,cls){var d=new Date();var ts=p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds());LOG.push({ts:ts,txt:txt,cls:cls||''});if(LOG.length>9)LOG.shift();}
+
+  function fetchJSON(url,ms){var c=new AbortController(),to=setTimeout(function(){c.abort();},ms||8000);
+    return fetch(url,{signal:c.signal,cache:'no-store'}).then(function(r){clearTimeout(to);if(!r.ok)throw new Error(r.status);return r.json();});}
+  function mark(s,ok){var ns=ok?'live':(s.kind==='control'?'control':'offline');
+    if(ns!==s.prev){ if(ns==='live')logLine('feed.'+s.id+' :: LINK ESTABLISHED'); else if(ns==='offline')logLine('feed.'+s.id+' :: SIGNAL LOST'); s.prev=ns; }
+    s.status=ns;}
+
+  // ---- pollers ----
+  function pollSolar(){var s=byId.solar;fetchJSON('https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json').then(function(raw){
+    if(!Array.isArray(raw)||raw.length<2)throw 0;var ib=raw[0].indexOf('bt'),bt=null;
+    for(var i=raw.length-1;i>0;i--){var v=parseFloat(raw[i][ib]);if(isFinite(v)){bt=v;break;}}if(bt==null)throw 0;
+    s.z=s.ew.push(bt);s.has=true;s.last=bt.toFixed(1)+'nT';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollQuake(){var s=byId.quake;fetchJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson').then(function(j){
+    if(!j||!j.features)throw 0;var cut=Date.now()-3600000,n=0,mx=0;j.features.forEach(function(f){var t=f.properties&&f.properties.time;if(t&&t>=cut){n++;var m=f.properties.mag||0;if(m>mx)mx=m;}});
+    s.z=s.ew.push(n);s.has=true;s.last=n+'/hr M'+(mx?mx.toFixed(1):'0');mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollPress(){var s=byId.press;fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=40.71&longitude=-74.01&current=surface_pressure',7000).then(function(j){
+    var p=j&&j.current&&j.current.surface_pressure;if(!isFinite(p))throw 0;s.z=s.ew.push(p);s.has=true;s.last=p.toFixed(0)+'hPa';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollCosmic(){var s=byId.cosmic;fetchJSON('https://drand.cloudflare.com/public/latest',6000).then(function(j){
+    if(!j||!j.randomness)throw 0;if(s._r!==j.round){s._r=j.round;s.z=clampZ(invNorm(hexU(j.randomness)));s.has=true;s.last='r'+j.round;}mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollNist(){var s=byId.nist;fetchJSON('https://beacon.nist.gov/beacon/2.0/pulse/last',7000).then(function(j){
+    var pu=j&&j.pulse;if(!pu||!pu.outputValue)throw 0;if(s._ts!==pu.timeStamp){s._ts=pu.timeStamp;s.z=clampZ(invNorm(hexU(pu.outputValue)));s.has=true;s.last='pulse';}mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollMarket(){var s=byId.market;fetchJSON('https://api.coinbase.com/v2/prices/BTC-USD/spot',6000).then(function(j){
+    var p=j&&j.data&&parseFloat(j.data.amount);if(!isFinite(p))throw 0;price(s,p);}).catch(function(){
+    fetchJSON('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',6000).then(function(j){var p=j&&parseFloat(j.price);if(!isFinite(p))throw 0;price(s,p);}).catch(function(){mark(s,0);});});}
+  function price(s,p){if(s._p!=null){s.z=s.ew.push(Math.log(p/s._p));s.has=true;}s._p=p;s.last='$'+Math.round(p).toLocaleString();mark(s,1);}
+  function pollHN(){var s=byId.hn;fetchJSON('https://hacker-news.firebaseio.com/v0/maxitem.json',6000).then(function(v){
+    v=parseInt(v,10);if(!isFinite(v))throw 0;if(s._max!=null){var d=Math.max(0,v-s._max);s.z=s.ew.push(d);s.has=true;s.last='+'+d;}s._max=v;mark(s,1);}).catch(function(){mark(s,0);});}
+
+  function startStream(s,url,proto){
+    s._cnt=s._cnt||0;
+    try{
+      var conn = proto==='ws' ? new WebSocket(url) : new EventSource(url);
+      conn.onopen=function(){mark(s,1);};
+      conn.onmessage=function(){s._cnt++;if(s.status!=='live')mark(s,1);};
+      conn.onerror=function(){ if(proto==='ws'||(conn.readyState===2)){mark(s,0);} };
+      conn.onclose=function(){mark(s,0); setTimeout(function(){ if(s.status==='offline') startStream(s,url,proto); },15000);};
+    }catch(e){mark(s,0);}
   }
 
-  // ---------- parse NOAA mag json (array-of-arrays w/ header row) ----------
-  function parseMag(raw){
-    if(!Array.isArray(raw)||raw.length<2) return [];
-    var head=raw[0], ix={};
-    for(var i=0;i<head.length;i++) ix[String(head[i]).toLowerCase()]=i;
-    var it=ix["time_tag"], ibt=("bt" in ix)?ix["bt"]:ix["bt_gsm"], ibz=ix["bz_gsm"];
-    var out=[];
-    for(var r=1;r<raw.length;r++){
-      var row=raw[r]; if(!row) continue;
-      var ts=Date.parse((row[it]||"").replace(" ","T")+"Z");
-      var bt=parseFloat(row[ibt]); var bz=parseFloat(row[ibz]);
-      if(isFinite(ts)&&isFinite(bt)) out.push({t:ts,bt:bt,bz:isFinite(bz)?bz:0});
+  function startSources(){
+    pollSolar();setInterval(pollSolar,30000);
+    pollQuake();setInterval(pollQuake,30000);
+    pollPress();setInterval(pollPress,300000);
+    pollCosmic();setInterval(pollCosmic,10000);
+    pollNist();setInterval(pollNist,20000);
+    pollMarket();setInterval(pollMarket,8000);
+    pollHN();setInterval(pollHN,20000);
+    startStream(byId.crowd,'https://stream.wikimedia.org/v2/stream/recentchange','sse');
+    startStream(byId.bsky,'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post','ws');
+  }
+
+  // ---------- epoch ----------
+  function active(s){return (s.status==='live'||s.status==='control')&&s.has;}
+  function epoch(){
+    byId.ctrlA.z=clampZ(invNorm(randU()));byId.ctrlA.has=true;
+    byId.ctrlB.z=clampZ(invNorm(randU()));byId.ctrlB.has=true;
+    ['crowd','bsky'].forEach(function(id){var s=byId[id];if(s.status==='live'){var rate=(s._cnt||0)/EPOCH_S;s.z=s.ew.push(rate);s.has=true;s.last=Math.round(rate)+'/s';}s._cnt=0;});
+    var sum=0,n=0;SRC.forEach(function(s){if(active(s)){sum+=s.z;n++;}});
+    if(n>0){
+      var Z=sum/Math.sqrt(n),c=Z*Z;
+      ST.N++;ST.sum+=(c-1);ST.cEW+=ST.cEWa*(c-ST.cEW);
+      ST.walk.push(ST.sum);if(ST.walk.length>2000)ST.walk.splice(0,ST.walk.length-2000);
+      ST.pulse.push(c);if(ST.pulse.length>120)ST.pulse.shift();
+      var now=Date.now();
+      if(c>6 && now-ST.glitchT>4000){ST.glitchT=now;triggerGlitch();logLine('!! NETVAR SPIKE c='+c.toFixed(1)+' :: WITHIN CHANCE','a');}
+      if(now-ST.logT>30000 && ST.N>10){ST.logT=now;var zc=ST.sum/Math.sqrt(2*ST.N);logLine('session :: N='+ST.N+' Zc='+(zc>=0?'+':'')+zc.toFixed(2)+' p='+fmtP(zc));}
     }
-    out.sort(function(a,b){return a.t-b.t;});
-    return out;
   }
+  function triggerGlitch(){var w=document.getElementById('wrap');w.classList.remove('glitch');void w.offsetWidth;w.classList.add('glitch');rain.boost=performance.now()+800;}
 
-  function fetchJSON(url){
-    var ctrl=new AbortController();
-    var to=setTimeout(function(){ctrl.abort();},FETCH_TIMEOUT);
-    return fetch(url,{signal:ctrl.signal,cache:"no-store"})
-      .then(function(res){ clearTimeout(to); if(!res.ok) throw new Error(res.status); return res.json(); });
-  }
-
-  // ---------- detrend + standardize a series, update cumulative ----------
-  function detrend(series){
-    // trailing moving average baseline, residual = bt - baseline
-    var base=new Array(series.length), res=new Array(series.length), acc=0, q=[];
-    for(var i=0;i<series.length;i++){
-      q.push(series[i].bt); acc+=series[i].bt;
-      if(q.length>BASE_WIN){ acc-=q.shift(); }
-      base[i]=acc/q.length;
-      res[i]=series[i].bt-base[i];
-    }
-    return {base:base,res:res};
-  }
-
-  function freezeNull(series,res){
-    var n=Math.max(20,Math.floor(series.length*REF_FRAC));
-    n=Math.min(n,series.length);
-    var m=0,k=0;
-    for(var i=0;i<n;i++){ m+=res[i]; k++; }
-    m/= (k||1);
-    var v=0;
-    for(var j=0;j<n;j++){ var d=res[j]-m; v+=d*d; }
-    v/= (k>1?(k-1):1);
-    S.muRef=m; S.sdRef=Math.max(Math.sqrt(v),1e-6);
-    S.testStart=series[Math.min(n,series.length-1)].t;
-    S.refFrozen=true;
-  }
-
-  // accumulate any NEW thinned test samples (>= testStart) into the cumulative walk
-  function accumulate(series,res){
-    if(!S.refFrozen||S.testStart==null) return;
-    for(var i=0;i<series.length;i++){
-      var t=series[i].t;
-      if(t<S.testStart) continue;
-      var bucket=Math.floor(t/THIN_MS);
-      if(S.seen[bucket]) continue;
-      S.seen[bucket]=true;
-      var z=(res[i]-S.muRef)/S.sdRef;
-      S.sum+=z; S.N++;
-      S.cum.push(S.sum);
-    }
-  }
-
-  function ingest(series){
-    if(series.length<30) return false;
-    S.series=series;
-    var d=detrend(series);
-    if(!S.refFrozen) freezeNull(series,d.res);
-    accumulate(series,d.res);
-    return true;
-  }
-
-  // ---------- simulation (physically-flavored IMF) ----------
-  function simSeries(){
-    var now=Date.now(), N=1440, out=[], r1=0, r2=0;
-    var phaseA=Math.random()*6.28, phaseB=Math.random()*6.28;
-    for(var i=0;i<N;i++){
-      var t=now-(N-1-i)*60000;
-      var mins=i;
-      // slow structure (hours) + medium (tens of min)
-      var slow=5.0+1.4*Math.sin(mins/220+phaseA)+0.7*Math.sin(mins/70+phaseB);
-      r1=0.85*r1+0.55*(Math.random()*2-1);          // Alfvenic red noise on |B|
-      var bt=Math.max(0.3, slow + r1 + (Math.random()<0.004? (Math.random()*4):0));
-      r2=0.9*r2+0.6*(Math.random()*2-1);
-      var bz=2.6*Math.sin(mins/95+phaseA*1.3)+r2;    // Bz oscillates around 0
-      out.push({t:t,bt:bt,bz:bz});
-    }
-    return out;
-  }
-  var simRed=0;
-  function simAppend(){
-    var last=S.series[S.series.length-1];
-    var t=last.t+60000, mins=S.series.length;
-    simRed=0.85*simRed+0.55*(Math.random()*2-1);
-    var slow=5.0+1.4*Math.sin(mins/220)+0.7*Math.sin(mins/70);
-    var bt=Math.max(0.3, slow+simRed+(Math.random()<0.004?Math.random()*4:0));
-    var bz=2.6*Math.sin(mins/95)+ (0.9*(Math.random()*2-1));
-    var s=S.series.concat([{t:t,bt:bt,bz:bz}]);
-    if(s.length>1600) s=s.slice(s.length-1600);
-    return s;
-  }
-
-  // ---------- canvas helpers ----------
-  function setupCanvas(cv,h){
-    var dpr=Math.max(1,Math.min(window.devicePixelRatio||1,2.5));
-    var w=cv.clientWidth||cv.parentNode.clientWidth;
-    cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
-    cv.style.height=h+"px";
-    var ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
-    return {ctx:ctx,w:w,h:h};
-  }
-  function gridY(ctx,x0,x1,y,txt){
-    ctx.strokeStyle="rgba(120,150,200,.10)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke();
-    if(txt!=null){ ctx.fillStyle="rgba(120,138,165,.7)"; ctx.font="10px 'IBM Plex Mono',monospace";
-      ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillText(txt,x1-2,y); }
-  }
-
-  function drawField(){
-    var cv=document.getElementById("fieldCanvas");
-    var H=Math.min(240,Math.max(180,Math.round((cv.clientWidth||320)*0.62)));
-    var s=setupCanvas(cv,H), ctx=s.ctx, W=s.w;
-    ctx.clearRect(0,0,W,H);
-    var pl=8,pr=34,pt=10,pb=20, x0=pl,x1=W-pr,y0=pt,y1=H-pb;
-    if(S.series.length<2) return;
-    var tEnd=S.series[S.series.length-1].t, tStart=tEnd-FIELD_VIEW_MS;
-    var view=S.series.filter(function(d){return d.t>=tStart;});
-    if(view.length<2) view=S.series.slice(-2);
-    // baseline for view
-    var d=detrend(S.series); var baseAll=d.base;
-    var startIdx=S.series.length-view.length;
-    var lo=Infinity,hi=-Infinity;
-    for(var i=0;i<view.length;i++){ var b=view[i].bt,z=view[i].bz,bl=baseAll[startIdx+i];
-      lo=Math.min(lo,b,z,bl); hi=Math.max(hi,b,z,bl); }
-    var pad=(hi-lo)*0.12||1; lo-=pad; hi+=pad;
-    function X(t){ return x0+(t-tStart)/(tEnd-tStart)*(x1-x0); }
-    function Y(v){ return y1-(v-lo)/(hi-lo)*(y1-y0); }
-    // y grid
-    for(var g=0;g<=3;g++){ var vv=lo+(hi-lo)*g/3; gridY(ctx,x0,x1,Y(vv),vv.toFixed(1)); }
-    // zero line for Bz
-    if(lo<0&&hi>0){ ctx.strokeStyle="rgba(95,160,255,.25)"; ctx.setLineDash([3,4]); ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(x0,Y(0)); ctx.lineTo(x1,Y(0)); ctx.stroke(); ctx.setLineDash([]); }
-    // baseline (dim dashed)
-    ctx.strokeStyle="rgba(120,138,165,.55)"; ctx.setLineDash([5,5]); ctx.lineWidth=1.2; ctx.beginPath();
-    for(i=0;i<view.length;i++){ var px=X(view[i].t),py=Y(baseAll[startIdx+i]); i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
-    ctx.stroke(); ctx.setLineDash([]);
-    // Bz
-    ctx.strokeStyle="#5fa0ff"; ctx.lineWidth=1.3; ctx.globalAlpha=.85; ctx.beginPath();
-    for(i=0;i<view.length;i++){ var qx=X(view[i].t),qy=Y(view[i].bz); i?ctx.lineTo(qx,qy):ctx.moveTo(qx,qy); }
-    ctx.stroke(); ctx.globalAlpha=1;
-    // |B| total with glow
-    ctx.shadowColor="rgba(55,230,198,.6)"; ctx.shadowBlur=8;
-    ctx.strokeStyle="#37e6c6"; ctx.lineWidth=1.8; ctx.beginPath();
-    for(i=0;i<view.length;i++){ var rx=X(view[i].t),ry=Y(view[i].bt); i?ctx.lineTo(rx,ry):ctx.moveTo(rx,ry); }
-    ctx.stroke(); ctx.shadowBlur=0;
-    // time labels
-    ctx.fillStyle="rgba(120,138,165,.7)"; ctx.font="9.5px 'IBM Plex Mono',monospace"; ctx.textBaseline="alphabetic";
-    ctx.textAlign="left"; ctx.fillText(fmtClock(tStart),x0,H-6);
-    ctx.textAlign="right"; ctx.fillText(fmtClock(tEnd),x1,H-6);
-  }
-
-  function drawCum(){
-    var cv=document.getElementById("cumCanvas");
-    var H=Math.min(240,Math.max(180,Math.round((cv.clientWidth||320)*0.62)));
-    var s=setupCanvas(cv,H), ctx=s.ctx, W=s.w;
-    ctx.clearRect(0,0,W,H);
-    var pl=8,pr=34,pt=12,pb=18, x0=pl,x1=W-pr,y0=pt,y1=H-pb;
-    var n=S.cum.length;
-    // envelope extent
-    var maxN=Math.max(n,1);
-    var env=3*Math.sqrt(maxN);
-    var ymax=Math.max(env*1.08, 1.5);
-    if(n){ for(var i=0;i<n;i++){ ymax=Math.max(ymax,Math.abs(S.cum[i])*1.1);} }
-    function X(k){ return x0+(maxN<=1?0.5:k/(maxN-1))*(x1-x0); }
-    function Y(v){ return (y0+y1)/2 - v/ymax*((y1-y0)/2); }
-    // envelope bands (fill)
-    function band(mult,fill){
-      ctx.beginPath();
-      for(var k=0;k<maxN;k++){ var e=mult*Math.sqrt(k+1); var px=X(k); k?ctx.lineTo(px,Y(e)):ctx.moveTo(px,Y(e)); }
-      for(var k2=maxN-1;k2>=0;k2--){ var e2=-mult*Math.sqrt(k2+1); ctx.lineTo(X(k2),Y(e2)); }
-      ctx.closePath(); ctx.fillStyle=fill; ctx.fill();
-    }
-    band(3,"rgba(255,93,134,.07)");
-    band(1.96,"rgba(231,179,79,.08)");
-    // envelope lines
-    function eline(mult,col){
-      ctx.strokeStyle=col; ctx.lineWidth=1; ctx.setLineDash([4,4]);
-      ctx.beginPath(); for(var k=0;k<maxN;k++){var e=mult*Math.sqrt(k+1);var px=X(k);k?ctx.lineTo(px,Y(e)):ctx.moveTo(px,Y(e));} ctx.stroke();
-      ctx.beginPath(); for(var k3=0;k3<maxN;k3++){var e3=-mult*Math.sqrt(k3+1);var px3=X(k3);k3?ctx.lineTo(px3,Y(e3)):ctx.moveTo(px3,Y(e3));} ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    eline(3,"rgba(255,93,134,.55)");
-    eline(1.96,"rgba(231,179,79,.6)");
-    // zero
-    gridY(ctx,x0,x1,Y(0),"0");
-    gridY(ctx,x0,x1,Y(ymax*0.66),(ymax*0.66).toFixed(0));
-    gridY(ctx,x0,x1,Y(-ymax*0.66),(-ymax*0.66).toFixed(0));
-    // observed walk
-    if(n>=1){
-      ctx.shadowColor="rgba(55,230,198,.55)"; ctx.shadowBlur=8;
-      ctx.strokeStyle="#37e6c6"; ctx.lineWidth=1.9; ctx.beginPath();
-      for(var c=0;c<n;c++){ var cx=X(c),cy=Y(S.cum[c]); c?ctx.lineTo(cx,cy):ctx.moveTo(cx,cy); }
-      ctx.stroke(); ctx.shadowBlur=0;
-      // head marker
-      var hx=X(n-1),hy=Y(S.cum[n-1]);
-      ctx.fillStyle="#eaf6ff"; ctx.beginPath(); ctx.arc(hx,hy,3,0,6.28); ctx.fill();
-      ctx.strokeStyle="rgba(55,230,198,.8)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(hx,hy,5.5,0,6.28); ctx.stroke();
-    } else {
-      ctx.fillStyle="rgba(120,138,165,.7)"; ctx.font="11px 'IBM Plex Mono',monospace"; ctx.textAlign="center";
-      ctx.fillText("accumulating test samples…",(x0+x1)/2,(y0+y1)/2);
+  // ---------- digital rain ----------
+  var rain={cv:null,ctx:null,cols:[],fs:14,w:0,h:0,boost:0,chars:''};
+  function buildChars(){var s='';for(var i=0x30A0;i<0x30FB;i++)s+=String.fromCharCode(i);s+='0123456789ABCDEFΦΨΩλΣ<>/\\|=+*';return s;}
+  function initRain(){rain.cv=document.getElementById('rain');rain.ctx=rain.cv.getContext('2d');rain.chars=buildChars();sizeRain();}
+  function sizeRain(){rain.w=window.innerWidth;rain.h=window.innerHeight;rain.cv.width=rain.w;rain.cv.height=rain.h;
+    rain.fs=Math.max(12,Math.round(rain.w/34));var cols=Math.ceil(rain.w/rain.fs);rain.cols=[];for(var i=0;i<cols;i++)rain.cols[i]=Math.random()*-50;}
+  function stepRain(){var x=rain.ctx;if(!x)return;var boosting=performance.now()<rain.boost;
+    x.fillStyle='rgba(0,6,0,'+(boosting?0.10:0.085)+')';x.fillRect(0,0,rain.w,rain.h);
+    x.font=rain.fs+'px monospace';
+    for(var i=0;i<rain.cols.length;i++){
+      var ch=rain.chars.charAt((Math.random()*rain.chars.length)|0);var px=i*rain.fs,py=rain.cols[i]*rain.fs;
+      x.fillStyle=boosting?'#d6ffe0':'#00ff66';if(Math.random()<0.04)x.fillStyle='#d2ffdd';
+      x.fillText(ch,px,py);
+      if(py>rain.h && Math.random()>0.975)rain.cols[i]=0; else rain.cols[i]+= boosting?1.4:0.9;
     }
   }
 
-  // ---------- formatting ----------
-  function pad2(n){return (n<10?"0":"")+n;}
-  function fmtClock(ms){var d=new Date(ms);return pad2(d.getHours())+":"+pad2(d.getMinutes());}
-  function fmtDateClock(ms){var d=new Date(ms);return pad2(d.getMonth()+1)+"/"+pad2(d.getDate())+" "+pad2(d.getHours())+":"+pad2(d.getMinutes());}
+  // ---------- charts ----------
+  function setup(cv,h){var dpr=Math.max(1,Math.min(window.devicePixelRatio||1,2.5));var w=cv.clientWidth||cv.parentNode.clientWidth;
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);cv.style.height=h+'px';var x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);return {x:x,w:w,h:h};}
+  function gline(x,x0,x1,y,c){x.strokeStyle=c||'rgba(0,255,102,.10)';x.lineWidth=1;x.beginPath();x.moveTo(x0,y);x.lineTo(x1,y);x.stroke();}
 
-  // ---------- state pill ----------
-  function setState(){
-    var z=S.N>0? S.sum/Math.sqrt(S.N):0, az=Math.abs(z);
-    var ring=document.getElementById("stateRing"), dotI=ring.querySelector("i");
-    var lab=document.getElementById("stateLab"), desc=document.getElementById("stateDesc");
-    var col,label,text;
-    if(S.N<3){ col="#5fa0ff"; label="CALIBRATING"; text="Building the test window — N too small to interpret yet."; }
-    else if(az<1.96){ col="#41e08c"; label="FIELD NULL"; text="Within the expected random-walk envelope. No deviation beyond chance — the honest baseline state."; }
-    else if(az<3){ col="#e7b34f"; label="ELEVATED"; text="|Z| ≥ 1.96 (p < 0.05). Expected ~1 session in 20 by chance alone; most often solar-wind activity, not anomaly."; }
-    else { col="#ff5d86"; label="ANOMALOUS"; text="|Z| ≥ 3 (p < 0.003, ~1 in 370). Still far likelier instrumental or space-weather in origin. Treat with skepticism."; }
-    ring.style.borderColor=col; ring.style.boxShadow="0 0 18px -2px "+col;
-    dotI.style.background=col; dotI.style.boxShadow="0 0 10px "+col;
-    lab.textContent=label; lab.style.color=col; desc.textContent=text;
-    document.getElementById("zVal").style.color = az<1.96?"#37e6c6":col;
-    document.getElementById("sigVal").style.color = col;
-  }
+  function drawGauge(){var cv=document.getElementById('gauge');var H=Math.min(210,Math.max(155,Math.round((cv.clientWidth||320)*0.48)));
+    var s=setup(cv,H),x=s.x,W=s.w;x.clearRect(0,0,W,H);var cx=W/2,cy=H-16,r=Math.min(W/2-16,H-38);
+    var c=ST.cEW,v=Math.max(-1,Math.min(1,(Math.log(Math.max(c,1e-3))/Math.LN2)/3)),aL=Math.PI,aR=2*Math.PI;
+    function ang(t){return aL+(t+1)/2*(aR-aL);}
+    var lw=12,grad=x.createLinearGradient(cx-r,0,cx+r,0);
+    grad.addColorStop(0,'#1fa6ff');grad.addColorStop(.4,'#0b8a3e');grad.addColorStop(.5,'#00ff66');grad.addColorStop(.6,'#0b8a3e');grad.addColorStop(1,'#ff4d5e');
+    x.lineCap='round';x.strokeStyle=grad;x.lineWidth=lw;x.beginPath();x.arc(cx,cy,r,aL,aR);x.stroke();
+    x.strokeStyle='rgba(0,255,102,.22)';x.lineWidth=1;for(var t=-1;t<=1.0001;t+=.25){var a=ang(t);x.beginPath();x.moveTo(cx+(r-lw/2-2)*Math.cos(a),cy+(r-lw/2-2)*Math.sin(a));x.lineTo(cx+(r-lw/2-9)*Math.cos(a),cy+(r-lw/2-9)*Math.sin(a));x.stroke();}
+    x.fillStyle='rgba(63,156,95,.9)';x.font="11px 'Share Tech Mono',monospace";
+    x.textAlign='left';x.fillText('CHAOS',cx-r+2,cy+13);x.textAlign='center';x.fillText('CHANCE',cx,cy-r-6);x.textAlign='right';x.fillText('ORDER',cx+r-2,cy+13);
+    var na=ang(v),col=c<0.55?'#1fa6ff':c>2.2?'#ff4d5e':'#00ff66',nx=cx+(r-lw)*Math.cos(na),ny=cy+(r-lw)*Math.sin(na);
+    x.shadowColor=col;x.shadowBlur=12;x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.moveTo(cx,cy);x.lineTo(nx,ny);x.stroke();x.shadowBlur=0;
+    x.fillStyle=col;x.beginPath();x.arc(cx,cy,6,0,6.28);x.fill();
+    x.fillStyle='#d2ffdd';x.font="34px 'VT323',monospace";x.textAlign='center';x.fillText('c='+c.toFixed(2),cx,cy-r*0.32);}
 
-  // ---------- render readouts ----------
-  function render(){
-    var z=S.N>0? S.sum/Math.sqrt(S.N):0;
-    var delta=S.N>0? S.sum/S.N:0, half=S.N>0? 1.96/Math.sqrt(S.N):0;
-    document.getElementById("zVal").textContent = S.N>0? (z>=0?"+":"")+z.toFixed(2):"–";
-    document.getElementById("zSub").textContent = "cumulative · N="+S.N;
-    document.getElementById("sigVal").textContent = S.N>0? az_str(z):"–";
-    document.getElementById("pVal").textContent = S.N>0? fmtP(z):"–";
-    document.getElementById("ciVal").textContent = S.N>0? ("["+(delta-half).toFixed(3)+", "+(delta+half).toFixed(3)+"]"):"–";
-    document.getElementById("tN").textContent = S.N;
-    document.getElementById("tSig").textContent = S.refFrozen? S.sdRef.toFixed(3)+" nT":"–";
-    document.getElementById("tCraft").textContent = S.live? "DSCOVR · NOAA SWPC":"synthetic IMF model";
-    if(S.series.length){
-      var a=S.series[0].t,b=S.series[S.series.length-1].t;
-      document.getElementById("tWin").textContent = fmtDateClock(a)+" → "+fmtDateClock(b);
-      document.getElementById("fieldMeta").textContent = S.series[S.series.length-1].bt.toFixed(1)+" nT · L1";
-    }
-    document.getElementById("tUpd").textContent = fmtDateClock(Date.now());
-    document.getElementById("cumMeta").textContent = "random walk · N="+S.N;
-    setState();
-    try{ drawField(); drawCum(); }catch(e){}
-  }
-  function az_str(z){ var a=Math.abs(z); return a.toFixed(2)+"σ"; }
+  function drawWalk(){var cv=document.getElementById('walk');var H=Math.min(210,Math.max(165,Math.round((cv.clientWidth||320)*0.56)));
+    var s=setup(cv,H),x=s.x,W=s.w;x.clearRect(0,0,W,H);var pl=8,pr=32,pt=12,pb=16,x0=pl,x1=W-pr,y0=pt,y1=H-pb;
+    var n=ST.walk.length,maxN=Math.max(ST.N,1),env=3*Math.sqrt(2*maxN),ymax=Math.max(env*1.08,2);
+    for(var i=0;i<n;i++){var av=Math.abs(ST.walk[i]);if(av*1.1>ymax)ymax=av*1.1;}
+    function PX(k,m){return x0+((m||maxN)<=1?.5:k/((m||maxN)-1))*(x1-x0);}function Y(v){return (y0+y1)/2 - v/ymax*((y1-y0)/2);}
+    function band(m,fill){x.beginPath();for(var k=0;k<maxN;k++)x.lineTo(PX(k),Y(m*Math.sqrt(2*(k+1))));for(var k2=maxN-1;k2>=0;k2--)x.lineTo(PX(k2),Y(-m*Math.sqrt(2*(k2+1))));x.closePath();x.fillStyle=fill;x.fill();}
+    band(3,'rgba(255,77,94,.06)');band(1.96,'rgba(255,210,63,.07)');
+    function el(m,col){x.strokeStyle=col;x.lineWidth=1;x.setLineDash([4,4]);for(var sg=-1;sg<=1;sg+=2){x.beginPath();for(var k=0;k<maxN;k++){var e=sg*m*Math.sqrt(2*(k+1));k?x.lineTo(PX(k),Y(e)):x.moveTo(PX(k),Y(e));}x.stroke();}x.setLineDash([]);}
+    el(3,'rgba(255,77,94,.5)');el(1.96,'rgba(255,210,63,.55)');gline(x,x0,x1,Y(0),'rgba(0,255,102,.18)');
+    x.fillStyle='rgba(63,156,95,.8)';x.font="10px 'Share Tech Mono',monospace";x.textAlign='right';x.textBaseline='middle';
+    x.fillText('+'+ymax.toFixed(0),x1-1,Y(ymax*.92));x.fillText('-'+ymax.toFixed(0),x1-1,Y(-ymax*.92));x.fillText('0',x1-1,Y(0));
+    if(n>=1){x.shadowColor='rgba(0,255,102,.5)';x.shadowBlur=8;x.strokeStyle='#00ff66';x.lineWidth=1.9;x.beginPath();
+      for(var ci=0;ci<n;ci++){var cx2=PX(ci,n),cy2=Y(ST.walk[ci]);ci?x.lineTo(cx2,cy2):x.moveTo(cx2,cy2);}x.stroke();x.shadowBlur=0;
+      x.fillStyle='#d2ffdd';x.beginPath();x.arc(PX(n-1,n),Y(ST.walk[n-1]),3,0,6.28);x.fill();}
+    else{x.fillStyle='rgba(63,156,95,.8)';x.font="11px 'Share Tech Mono',monospace";x.textAlign='center';x.fillText('accumulating epochs…',W/2,(y0+y1)/2);}}
 
-  // ---------- badge / banner ----------
-  function setMode(live){
-    S.live=live;
-    var b=document.getElementById("badge"), bt=document.getElementById("badgeText");
-    if(live){ b.className="badge live"; bt.textContent="LIVE · NOAA"; document.getElementById("simbanner").classList.remove("show"); }
-    else { b.className="badge sim"; bt.textContent="SIMULATED"; document.getElementById("simbanner").classList.add("show"); }
-  }
+  function drawPulse(){var cv=document.getElementById('pulse');var H=Math.min(150,Math.max(115,Math.round((cv.clientWidth||320)*0.38)));
+    var s=setup(cv,H),x=s.x,W=s.w;x.clearRect(0,0,W,H);var pl=8,pr=28,pt=10,pb=12,x0=pl,x1=W-pr,y0=pt,y1=H-pb;
+    var n=ST.pulse.length,ymax=4;for(var i=0;i<n;i++)if(ST.pulse[i]>ymax)ymax=ST.pulse[i]*1.1;
+    function PX(k){return x0+(n<=1?.5:k/(n-1))*(x1-x0);}function Y(v){return y1-(v/ymax)*(y1-y0);}
+    gline(x,x0,x1,Y(1),'rgba(0,255,102,.3)');x.fillStyle='rgba(0,255,102,.6)';x.font="9.5px 'Share Tech Mono',monospace";x.textAlign='right';x.textBaseline='middle';x.fillText('1',x1-1,Y(1));
+    if(n>=1){x.shadowColor='rgba(0,255,102,.45)';x.shadowBlur=7;x.strokeStyle='#39ff8f';x.lineWidth=1.6;x.beginPath();
+      for(var k=0;k<n;k++){var px=PX(k),py=Y(ST.pulse[k]);k?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();x.shadowBlur=0;
+      x.lineTo(PX(n-1),y1);x.lineTo(PX(0),y1);x.closePath();x.fillStyle='rgba(0,255,102,.07)';x.fill();}}
 
-  // ---------- boot + poll ----------
-  function boot(){
-    fetchJSON(MAG_LOAD).then(function(raw){
-      var series=parseMag(raw);
-      if(!series||series.length<30) throw new Error("thin");
-      setMode(true); ingest(series); render();
-    }).catch(function(){
-      setMode(false);
-      var sim=simSeries(); ingest(sim); render();
-    });
-  }
-
-  function poll(){
-    if(S.live){
-      fetchJSON(MAG_POLL).then(function(raw){
-        var series=parseMag(raw);
-        if(series.length<2){ return; }
-        // merge: keep persistent cumulative, refresh field view from freshest tail
-        mergeLive(series); render();
-      }).catch(function(){
-        // transient failure: try the day endpoint, else hold last state
-        fetchJSON(MAG_LOAD).then(function(raw2){ var s2=parseMag(raw2); if(s2.length>2){ mergeLive(s2); render(); } }).catch(function(){});
+  // ---------- source rows ----------
+  function buildSources(){var box=document.getElementById('sources');box.innerHTML='';
+    CATS.forEach(function(cat){
+      var hdr=document.createElement('div');hdr.className='catrow';hdr.textContent=cat;box.appendChild(hdr);
+      SRC.filter(function(s){return s.cat===cat;}).forEach(function(s){
+        var row=document.createElement('div');row.className='src';row.id='row_'+s.id;
+        row.innerHTML='<span class="sdot" style="color:'+s.color+'"></span>'+
+          '<div class="meta"><div class="nm">'+s.label+' <span class="tag">'+(s.kind==='control'?'NULL':'LIVE')+'</span></div>'+
+          '<div class="desc">'+s.desc+' · '+s.cad+'</div>'+
+          '<div class="barwrap"><div class="mid"></div><div class="bar" id="bar_'+s.id+'" style="background:'+s.color+'"></div></div></div>'+
+          '<div class="zv" id="zv_'+s.id+'">—</div>';
+        box.appendChild(row);
       });
-    } else {
-      S.series=simAppend(); var d=detrend(S.series); accumulate(S.series,d.res); render();
-    }
+    });}
+  function renderSources(){var liveExt=0,totExt=0;
+    SRC.forEach(function(s){var row=document.getElementById('row_'+s.id);if(!row)return;
+      var dot=row.querySelector('.sdot'),bar=document.getElementById('bar_'+s.id),zv=document.getElementById('zv_'+s.id),act=active(s);
+      if(s.kind==='external'){totExt++;if(s.status==='live')liveExt++;}
+      row.className='src'+(act?' on':'')+(s.status==='offline'?' off':'');
+      if(s.status==='offline'){dot.style.background='var(--faint)';zv.textContent='offline';bar.style.width='0';}
+      else if(!act){dot.style.background='var(--faint)';zv.textContent='…';bar.style.width='0';}
+      else{dot.style.background=s.color;var z=s.z,w=Math.min(Math.abs(z),4)/4*49;bar.style.background=s.color;bar.style.boxShadow=Math.abs(z)>2?'0 0 8px '+s.color:'none';
+        if(z>=0){bar.style.left='50%';bar.style.width=w+'%';}else{bar.style.left=(50-w)+'%';bar.style.width=w+'%';}
+        zv.textContent=(z>=0?'+':'')+z.toFixed(2);zv.title=s.last||'';}});
+    return {liveExt:liveExt,totExt:totExt};}
+
+  function setVerdict(Zc){var az=Math.abs(Zc),lab,desc,col;
+    if(ST.N<10){col='#1fa6ff';lab='CALIBRATING';desc='Building the tap — N too small to read. The needle is live; the verdict needs samples.';}
+    else if(az<1.96){col='#00ff66';lab='INCOHERENT // CHANCE';desc='The constellation is scattering as independence predicts. No synchrony beyond chance — the honest baseline.';}
+    else if(az<3){col='#ffd23f';lab=Zc>0?'ORDER EMERGING':'OVER-DISPERSED';desc=Zc>0?'Sustained co-movement at p<0.05 — expected ~1 session in 20 by chance. Watch if it holds or a shared cause explains it.':'Anti-aligning more than chance — also ~1 in 20 by chance. Usually noise.';}
+    else {col='#ff4d5e';lab=Zc>0?'GLITCH // STRONG COHERENCE':'STRONG DISPERSION';desc=Zc>0?'p<0.003. Striking — but still most likely chance or a shared cause, not meaning. Hunt for a mundane driver before anything else.':'p<0.003 of anti-coherence. Note it, distrust it.';}
+    var el=document.getElementById('vLab');el.textContent=lab;el.style.color=col;el.style.textShadow='0 0 12px '+col;
+    document.getElementById('vDesc').textContent=desc;
+    document.getElementById('zcVal').style.color=az<1.96?'#d2ffdd':col;}
+
+  function renderLog(){var box=document.getElementById('log');var h='';for(var i=0;i<LOG.length;i++){var l=LOG[i];h+='<div><span class="t">'+l.ts+'</span> <span class="'+l.cls+'">'+l.txt+'</span></div>';}box.innerHTML=h;}
+
+  function renderData(){
+    document.getElementById('sesh').textContent='UPTIME '+clock(Date.now()-ST.start);
+    document.getElementById('tElapsed').textContent=clock(Date.now()-ST.start);
+    var sc=renderSources();
+    var b=document.getElementById('badge'),bt=document.getElementById('badgeText'),banner=document.getElementById('simbanner');
+    if(sc.liveExt>=2){b.className='badge live';bt.textContent='LIVE TAP';banner.classList.remove('show');}
+    else if(sc.liveExt===1){b.className='badge partial';bt.textContent='PARTIAL';banner.classList.remove('show');}
+    else{b.className='badge ctrl';bt.textContent='CONTROL ONLY';banner.classList.add('show');}
+    var nAct=0;SRC.forEach(function(s){if(active(s))nAct++;});
+    document.getElementById('nSrc').textContent=nAct;
+    document.getElementById('nSub').textContent=sc.liveExt+' live + '+(nAct-sc.liveExt)+' null';
+    document.getElementById('tSrc').textContent=sc.liveExt+' / '+sc.totExt;
+    var Zc=ST.N>0?ST.sum/Math.sqrt(2*ST.N):0;
+    document.getElementById('zcVal').textContent=ST.N>0?((Zc>=0?'+':'')+Zc.toFixed(2)):'–';
+    document.getElementById('zcSub').textContent='cumulative // N='+ST.N;
+    document.getElementById('pVal').textContent=ST.N>0?fmtP(Zc):'–';
+    document.getElementById('cVal').textContent=ST.N>0?ST.cEW.toFixed(2):'–';
+    document.getElementById('tN').textContent=ST.N;
+    setVerdict(Zc);renderLog();
+    try{drawGauge();drawWalk();drawPulse();}catch(e){}
   }
 
-  // merge fresh live samples into the display series (dedupe by timestamp) and accumulate new test samples
-  function mergeLive(fresh){
-    var have=Object.create(null);
-    for(var i=0;i<S.series.length;i++) have[S.series[i].t]=1;
-    var merged=S.series.slice();
-    for(var j=0;j<fresh.length;j++){ if(!have[fresh[j].t]) merged.push(fresh[j]); }
-    merged.sort(function(a,b){return a.t-b.t;});
-    if(merged.length>2000) merged=merged.slice(merged.length-2000);
-    S.series=merged;
-    var d=detrend(S.series);
-    accumulate(S.series,d.res);
-  }
-
-  // resize redraw
-  var rT;
-  window.addEventListener("resize",function(){ clearTimeout(rT); rT=setTimeout(function(){ try{drawField();drawCum();}catch(e){} },120); });
-
-  // go
-  boot();
-  setInterval(poll,POLL_MS);
+  // ---------- boot ----------
+  initRain();buildSources();logLine('synchronicity_machine :: BOOT');logLine('null arms :: ONLINE');
+  startSources();
+  setInterval(epoch,EPOCH_MS);
+  setInterval(stepRain,42);
+  setInterval(renderData,110);
+  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();}catch(e){}},150);});
 })();
 </script>
 </body>
