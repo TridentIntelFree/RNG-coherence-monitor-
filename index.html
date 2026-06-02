@@ -122,7 +122,7 @@
       <div style="min-width:0">
         <div class="codetag">// REAL-TIME COHERENCE TAP</div>
         <h1>SYNCHRONICITY<br>MACHINE<span class="cur"></span></h1>
-        <div class="sub">Eleven unrelated live feeds, each read as a standardized deviation. Watching for the moment the noise falls into agreement.</div>
+        <div class="sub">Nineteen unrelated live feeds, each read as a standardized deviation. Watching for the moment the noise falls into agreement.</div>
       </div>
       <div class="rcol">
         <div id="badge" class="badge ctrl"><span class="dot"></span><span id="badgeText">BOOT</span></div>
@@ -130,7 +130,7 @@
       </div>
     </div>
     <div id="simbanner" class="simbanner">
-      <b>CONTROL ONLY //</b> no external feed reachable from this sandbox — running on the two local crypto null-arms, which is the calibration baseline (independent randomness must <em>not</em> cohere). Self-host the file to open the full tap. Feeds attempted: <code>NOAA · USGS · Open-Meteo · drand · NIST · Coinbase · Wikimedia · Bluesky · HN</code>.
+      <b>CONTROL ONLY //</b> no external feed reachable from this sandbox — running on the two local crypto null-arms, which is the calibration baseline (independent randomness must <em>not</em> cohere). Self-host the file to open the full tap. Open-Meteo &amp; GitHub feeds are browser-direct; some government / anti-bot endpoints (USGS water, NOAA tides, GDACS, Reddit) may need a CORS proxy.
     </div>
   </header>
 
@@ -185,22 +185,45 @@
     <div class="method">
       <h4>The idea</h4>
       <p>Not a randomness test of one stream — the version the Global Consciousness Project actually measured: <em>coherence across a network of unrelated sources</em>. The signal is never any single feed; it's whether they fall into agreement more than independence allows.</p>
-      <h4>The eleven arms</h4>
-      <p>Grouped <b>Physical</b> (solar wind, seismic, barometric) · <b>Random</b> (two crypto null-arms, drand, NIST) · <b>Market</b> (BTC tape) · <b>Human</b> (Wikipedia, Bluesky, Hacker News). Each is read each epoch and standardized against its own running baseline (EWMA) into a deviation <code>zᵢ</code>. Sources are chosen to be <em>causally unrelated</em>.</p>
+      <h4>The nineteen arms</h4>
+      <p>Grouped <b>Physical</b> (solar wind, seismic, barometric, river flow, tide, air quality, ocean swell, hazards) · <b>Random</b> (two crypto null-arms, drand, NIST) · <b>Market</b> (BTC tape) · <b>Human</b> (Wikipedia, Bluesky, Hacker News, GitHub, Reddit, Mastodon). Each is read each epoch and standardized against its own running baseline (EWMA) into a deviation <code>zᵢ</code>.</p>
       <h4>The metric</h4>
       <p>Per epoch <code>Z = Σzᵢ/√N</code> over active arms; coherence <code>c = Z²</code>, which is <code>χ²₁</code> (mean 1) under independence. Co-movement makes <code>|Σzᵢ|</code> large → <code>c</code> spikes. The walk is <code>Σ(c−1)</code>; session significance <code>Zc = Σ(c−1)/√(2N)</code> ≈ N(0,1) under the null.</p>
       <h4>Why the null arms matter</h4>
       <p>The two <code>crypto.getRandomValues</code> streams are genuinely independent N(0,1). They anchor calibration — watch pure chance refuse to synchronize — and make false coherence harder, not easier.</p>
-      <h4 class="warn">What this is NOT</h4>
-      <p class="warn">It measures <em>coincidence, not meaning</em>. Jung's synchronicity is the significance an observer projects onto a coincidence; no instrument supplies that. Bands are approximate (slow feeds repeat between updates → autocorrelation; null arms keep it honest). Beware <em>counterfeit synchrony</em> from shared causes — which is why a second crypto (≈BTC), the K-index (≈solar wind), and BTC mempool (≈price) were deliberately excluded. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by pure chance. That is calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
-      <p style="color:var(--faint);margin-top:12px">Public sources: NOAA SWPC · USGS · Open-Meteo · drand/League of Entropy · NIST Randomness Beacon · Wikimedia EventStreams · Bluesky Jetstream · Hacker News · Coinbase. Independent tool, unaffiliated.</p>
+      <h4 class="warn">What this is NOT / honest caveats</h4>
+      <p class="warn">It measures <em>coincidence, not meaning</em>. Jung's synchronicity is the significance an observer projects onto a coincidence; no instrument supplies that. Two specific cautions with this many arms: (1) the six <b>Human</b> feeds share a weak common driver — a major news event can move them together, so coherence confined to that cluster is mundane, not cosmic; broad coherence across Human <em>and</em> Physical <em>and</em> Random is the interesting case. (2) <b>GDACS</b> partly overlaps the seismic arm (both spike on big quakes) — for maximum rigor, comment it out. Deliberately excluded to avoid counterfeit synchrony: a second crypto (≈BTC), K-index &amp; GOES X-ray (≈solar wind), BTC mempool (≈price), EONET (≈GDACS), ISS/tide-table (deterministic). And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by chance — calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
+      <p style="color:var(--faint);margin-top:12px">Public sources: NOAA SWPC &amp; CO-OPS · USGS · Open-Meteo · drand · NIST · Wikimedia · Bluesky Jetstream · Hacker News · GitHub · Reddit · Mastodon · Coinbase. Independent tool, unaffiliated.</p>
     </div>
   </details>
 
-  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>continuous live ensemble · extend the source registry to add arms · wake up</footer>
+  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>nineteen-arm live ensemble · extend it yourself via the recipe at the top of the script · wake up</footer>
 </div>
 
 <script>
+/* ──────────────────────────────────────────────────────────────────────────
+   ADD YOUR OWN ARM — two steps, nothing else changes:
+
+   1) Add an entry to the SRC array below:
+        S({id:'myfeed', cat:'PHYSICAL', label:'MY.FEED', kind:'external',
+           color:'#7dffb0', cad:'~30s', desc:'what it is — its domain', ew:new Ewma(30)}),
+      cat is one of PHYSICAL | RANDOM | MARKET | HUMAN.
+      KEEP IT CAUSALLY INDEPENDENT of the others (no second feed of the same thing).
+
+   2) Add a poller near the other poll* functions, then call it once in startSources():
+        function pollMyfeed(){ var s=byId.myfeed;
+          fetchJSON('https://example.com/data.json', 7000).then(function(j){
+            var x = j.someNumber;          // pull ONE number out of the response
+            if(!isFinite(x)) throw 0;
+            s.z = s.ew.push(x); s.has = true; s.last = x.toFixed(1); mark(s,1);
+          }).catch(function(){ mark(s,0); });
+        }
+        // inside startSources():   pollMyfeed(); setInterval(pollMyfeed, 30000);
+
+   For a live socket instead of polling:  startStream(byId.myfeed, 'wss://…', 'ws')
+   (or '…','sse' for Server-Sent Events). The math, charts, gauge, log and Matrix
+   skin all pick the new arm up automatically. That's it.
+   ────────────────────────────────────────────────────────────────────────── */
 (function(){
   "use strict";
   // ---------- math ----------
@@ -220,22 +243,35 @@
   function hexU(hex){var h=(hex||"").slice(0,13);if(h.length<13)return randU();var v=parseInt(h,16);if(!isFinite(v))return randU();return (v+.5)/Math.pow(16,13);}
   function Ewma(hl){this.a=1-Math.pow(2,-1/hl);this.m=0;this.v=1;this.init=false;}
   Ewma.prototype.push=function(x){if(!isFinite(x))return 0;if(!this.init){this.m=x;this.v=1;this.init=true;return 0;}var z=(x-this.m)/Math.sqrt(Math.max(this.v,1e-9));var d=x-this.m;this.m+=this.a*d;this.v=(1-this.a)*(this.v+this.a*d*d);return clampZ(z);};
+  function listRate(arr,getT){if(!arr||arr.length<2)return null;var ts=[];for(var i=0;i<arr.length;i++){var t=getT(arr[i]);if(isFinite(t))ts.push(t);}if(ts.length<2)return null;var mn=Math.min.apply(null,ts),mx=Math.max.apply(null,ts),sp=mx-mn;return sp>0?arr.length/sp:arr.length;}
 
   // ---------- sources ----------
   var EPOCH_MS=2000, EPOCH_S=EPOCH_MS/1000;
   function S(o){o.status=o.kind==='control'?'control':'init';o.z=0;o.has=false;o.last=null;o.prev='init';return o;}
   var SRC=[
+    // ---- PHYSICAL ----
     S({id:'solar',cat:'PHYSICAL',label:'SOLAR.WIND',kind:'external',color:'#00ff66',cad:'~60s',desc:'NOAA IMF |B| @ L1 — the Sun',ew:new Ewma(40)}),
     S({id:'quake',cat:'PHYSICAL',label:'SEISMIC',kind:'external',color:'#39ff8f',cad:'~30s',desc:'USGS quakes/hr — the crust',ew:new Ewma(30)}),
     S({id:'press',cat:'PHYSICAL',label:'BAROMETRIC',kind:'external',color:'#7dffb0',cad:'~5m',desc:'Open-Meteo surface pressure — weather',ew:new Ewma(24)}),
+    S({id:'river',cat:'PHYSICAL',label:'RIVER.FLOW',kind:'external',color:'#7dffb0',cad:'~15m',desc:'USGS discharge, Mississippi — hydrology (may need proxy)',ew:new Ewma(20)}),
+    S({id:'tide',cat:'PHYSICAL',label:'TIDE.LEVEL',kind:'external',color:'#7dffb0',cad:'~6m',desc:'NOAA water level, The Battery NY — ocean/lunar (may need proxy)',ew:new Ewma(24)}),
+    S({id:'aqi',cat:'PHYSICAL',label:'AIR.QUALITY',kind:'external',color:'#7dffb0',cad:'~5m',desc:'Open-Meteo PM2.5 — atmospheric chemistry',ew:new Ewma(24)}),
+    S({id:'wave',cat:'PHYSICAL',label:'OCEAN.SWELL',kind:'external',color:'#7dffb0',cad:'~10m',desc:'Open-Meteo wave height, N.Atlantic — ocean',ew:new Ewma(20)}),
+    S({id:'hazard',cat:'PHYSICAL',label:'GDACS.HAZARD',kind:'external',color:'#7dffb0',cad:'~10m',desc:'GDACS active disasters — hazards (overlaps seismic; may need proxy)',ew:new Ewma(16)}),
+    // ---- RANDOM ----
     S({id:'ctrlA',cat:'RANDOM',label:'NULL.ALPHA',kind:'control',color:'#2f9c5f',cad:'epoch',desc:'crypto.getRandomValues — known noise'}),
     S({id:'ctrlB',cat:'RANDOM',label:'NULL.BETA',kind:'control',color:'#2f9c5f',cad:'epoch',desc:'crypto.getRandomValues — known noise'}),
     S({id:'cosmic',cat:'RANDOM',label:'DRAND.BEACON',kind:'external',color:'#46e6c0',cad:'~30s',desc:'League of Entropy — distributed randomness'}),
     S({id:'nist',cat:'RANDOM',label:'NIST.QUANTUM',kind:'external',color:'#46e6c0',cad:'~60s',desc:'NIST randomness beacon — quantum source'}),
+    // ---- MARKET ----
     S({id:'market',cat:'MARKET',label:'BTC.TAPE',kind:'external',color:'#ffd23f',cad:'~8s',desc:'BTC-USD log-returns — markets',ew:new Ewma(50)}),
+    // ---- HUMAN ----
     S({id:'crowd',cat:'HUMAN',label:'WIKI.STREAM',kind:'external',color:'#7db8ff',cad:'live',desc:'Wikipedia edits — collective attention',ew:new Ewma(60)}),
     S({id:'bsky',cat:'HUMAN',label:'BLUESKY.FIREHOSE',kind:'external',color:'#7db8ff',cad:'live',desc:'Bluesky posts — social torrent',ew:new Ewma(60)}),
-    S({id:'hn',cat:'HUMAN',label:'HN.NEWITEMS',kind:'external',color:'#7db8ff',cad:'~20s',desc:'Hacker News new-item rate — tech crowd',ew:new Ewma(20)})
+    S({id:'hn',cat:'HUMAN',label:'HN.NEWITEMS',kind:'external',color:'#7db8ff',cad:'~20s',desc:'Hacker News new-item rate — tech crowd',ew:new Ewma(20)}),
+    S({id:'github',cat:'HUMAN',label:'GITHUB.EVENTS',kind:'external',color:'#7db8ff',cad:'~75s',desc:'GitHub public events — code crowd',ew:new Ewma(18)}),
+    S({id:'reddit',cat:'HUMAN',label:'REDDIT.STREAM',kind:'external',color:'#7db8ff',cad:'~30s',desc:'Reddit r/all comment rate — social (may need proxy)',ew:new Ewma(40)}),
+    S({id:'mastodon',cat:'HUMAN',label:'MASTODON.FED',kind:'external',color:'#7db8ff',cad:'~20s',desc:'Mastodon public timeline rate — fediverse',ew:new Ewma(40)})
   ];
   var byId={};SRC.forEach(function(s){byId[s.id]=s;});
   var CATS=['PHYSICAL','RANDOM','MARKET','HUMAN'];
@@ -263,6 +299,17 @@
     s.z=s.ew.push(n);s.has=true;s.last=n+'/hr M'+(mx?mx.toFixed(1):'0');mark(s,1);}).catch(function(){mark(s,0);});}
   function pollPress(){var s=byId.press;fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=40.71&longitude=-74.01&current=surface_pressure',7000).then(function(j){
     var p=j&&j.current&&j.current.surface_pressure;if(!isFinite(p))throw 0;s.z=s.ew.push(p);s.has=true;s.last=p.toFixed(0)+'hPa';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollRiver(){var s=byId.river;fetchJSON('https://waterservices.usgs.gov/nwis/iv/?format=json&sites=05331000&parameterCd=00060&siteStatus=all',8000).then(function(j){
+    var ts=j&&j.value&&j.value.timeSeries&&j.value.timeSeries[0],vv=ts&&ts.values&&ts.values[0]&&ts.values[0].value&&ts.values[0].value[0];
+    var v=vv&&parseFloat(vv.value);if(!isFinite(v))throw 0;s.z=s.ew.push(v);s.has=true;s.last=Math.round(v)+'cfs';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollTide(){var s=byId.tide;fetchJSON('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=web&date=latest&station=8518750&datum=MLLW&time_zone=gmt&units=metric&format=json',8000).then(function(j){
+    var v=j&&j.data&&j.data[0]&&parseFloat(j.data[0].v);if(!isFinite(v))throw 0;s.z=s.ew.push(v);s.has=true;s.last=v.toFixed(2)+'m';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollAqi(){var s=byId.aqi;fetchJSON('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=40.71&longitude=-74.01&current=pm2_5',7000).then(function(j){
+    var v=j&&j.current&&j.current.pm2_5;if(!isFinite(v))throw 0;s.z=s.ew.push(v);s.has=true;s.last=v.toFixed(1)+'ug';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollWave(){var s=byId.wave;fetchJSON('https://marine-api.open-meteo.com/v1/marine?latitude=40.7&longitude=-69.0&current=wave_height',7000).then(function(j){
+    var v=j&&j.current&&j.current.wave_height;if(!isFinite(v))throw 0;s.z=s.ew.push(v);s.has=true;s.last=v.toFixed(2)+'m';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollHazard(){var s=byId.hazard;fetchJSON('https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP',8000).then(function(j){
+    var n=j&&j.features?j.features.length:(Array.isArray(j)?j.length:null);if(n==null)throw 0;s.z=s.ew.push(n);s.has=true;s.last=n+'evt';mark(s,1);}).catch(function(){mark(s,0);});}
   function pollCosmic(){var s=byId.cosmic;fetchJSON('https://drand.cloudflare.com/public/latest',6000).then(function(j){
     if(!j||!j.randomness)throw 0;if(s._r!==j.round){s._r=j.round;s.z=clampZ(invNorm(hexU(j.randomness)));s.has=true;s.last='r'+j.round;}mark(s,1);}).catch(function(){mark(s,0);});}
   function pollNist(){var s=byId.nist;fetchJSON('https://beacon.nist.gov/beacon/2.0/pulse/last',7000).then(function(j){
@@ -273,6 +320,12 @@
   function price(s,p){if(s._p!=null){s.z=s.ew.push(Math.log(p/s._p));s.has=true;}s._p=p;s.last='$'+Math.round(p).toLocaleString();mark(s,1);}
   function pollHN(){var s=byId.hn;fetchJSON('https://hacker-news.firebaseio.com/v0/maxitem.json',6000).then(function(v){
     v=parseInt(v,10);if(!isFinite(v))throw 0;if(s._max!=null){var d=Math.max(0,v-s._max);s.z=s.ew.push(d);s.has=true;s.last='+'+d;}s._max=v;mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollGithub(){var s=byId.github;fetchJSON('https://api.github.com/events?per_page=100',8000).then(function(j){
+    if(!Array.isArray(j)||!j.length)throw 0;var top=parseFloat(j[0].id);if(!isFinite(top))throw 0;if(s._id!=null){var d=Math.max(0,top-s._id);s.z=s.ew.push(d);s.has=true;s.last='+'+d;}s._id=top;mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollReddit(){var s=byId.reddit;fetchJSON('https://www.reddit.com/r/all/comments.json?limit=100',8000).then(function(j){
+    var arr=j&&j.data&&j.data.children;var rate=listRate(arr,function(x){return x.data&&x.data.created_utc;});if(rate==null)throw 0;s.z=s.ew.push(rate);s.has=true;s.last=rate.toFixed(1)+'/s';mark(s,1);}).catch(function(){mark(s,0);});}
+  function pollMastodon(){var s=byId.mastodon;fetchJSON('https://mastodon.social/api/v1/timelines/public?limit=40',8000).then(function(j){
+    var rate=listRate(j,function(x){return Date.parse(x.created_at)/1000;});if(rate==null)throw 0;s.z=s.ew.push(rate);s.has=true;s.last=rate.toFixed(1)+'/s';mark(s,1);}).catch(function(){mark(s,0);});}
 
   function startStream(s,url,proto){
     s._cnt=s._cnt||0;
@@ -289,10 +342,18 @@
     pollSolar();setInterval(pollSolar,30000);
     pollQuake();setInterval(pollQuake,30000);
     pollPress();setInterval(pollPress,300000);
+    pollRiver();setInterval(pollRiver,900000);
+    pollTide();setInterval(pollTide,360000);
+    pollAqi();setInterval(pollAqi,300000);
+    pollWave();setInterval(pollWave,600000);
+    pollHazard();setInterval(pollHazard,600000);
     pollCosmic();setInterval(pollCosmic,10000);
     pollNist();setInterval(pollNist,20000);
     pollMarket();setInterval(pollMarket,8000);
     pollHN();setInterval(pollHN,20000);
+    pollGithub();setInterval(pollGithub,75000);
+    pollReddit();setInterval(pollReddit,30000);
+    pollMastodon();setInterval(pollMastodon,20000);
     startStream(byId.crowd,'https://stream.wikimedia.org/v2/stream/recentchange','sse');
     startStream(byId.bsky,'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post','ws');
   }
