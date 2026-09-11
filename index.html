@@ -12,7 +12,7 @@
     --grn:#00ff66; --grn2:#19c25a; --grndim:#0c8a3e; --grnfaint:#0a5a2c;
     --bg:#000600; --panel:rgba(2,18,7,.84); --edge:#0e5a2f; --hair:rgba(0,255,102,.16);
     --txt:#86f5ac; --bright:#d2ffdd; --dim:#3f9c5f; --faint:#236b3a;
-    --amber:#ffd23f; --red:#ff4d5e; --blu:#7db8ff;
+    --amber:#ffd23f; --red:#ff4d5e; --blu:#7db8ff; --fly:#c08bff;
     --mono:'Share Tech Mono',ui-monospace,Menlo,monospace;
     --crt:'VT323','Share Tech Mono',monospace;
   }
@@ -96,6 +96,7 @@
   .cell .v{font-size:13px;color:var(--txt);margin-top:3px;word-break:break-all}
   .cell.det{border-color:rgba(125,184,255,.3)}.cell.det .v{color:var(--blu)}
   .cell.nul{border-color:rgba(47,156,95,.4)}.cell.nul .v{color:var(--grn2)}
+  .cell.fly{border-color:rgba(192,139,255,.34)}.cell.fly .v{color:var(--fly)}
 
   details{margin-top:12px;overflow:hidden}
   summary{cursor:pointer;list-style:none;padding:13px 15px;font-size:13px;letter-spacing:.05em;color:var(--grn);display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -163,6 +164,19 @@
   </div>
 
   <div class="term panel">
+    <div class="ptop"><div class="ptitle">> FLY.BRAIN<b>.readout</b></div><div class="pmeta" id="fbMeta">connectome-shaped detector · not an arm</div></div>
+    <canvas id="flyb" class="chart"></canvas>
+    <canvas id="flym" class="chart" style="margin-top:8px"></canvas>
+    <div class="tele" style="margin-top:9px">
+      <div class="cell fly"><div class="k">MBON familiarity Z</div><div class="v" id="fbFam">–</div></div>
+      <div class="cell fly"><div class="k">EB bump coherence Z</div><div class="v" id="fbRing">–</div></div>
+      <div class="cell"><div class="k">KC sparse code</div><div class="v" id="fbSp">–</div></div>
+      <div class="cell"><div class="k">Compass heading</div><div class="v" id="fbHd">–</div></div>
+    </div>
+    <div class="hint">The same swarm, read by a <span style="color:var(--fly)">Drosophila-shaped circuit</span> instead of a sum: antennal-lobe gain control → 2000 Kenyon cells on random claws → APL winner-take-all → a depressing MBON synapse (low = <em>seen this before</em>), plus a 16-wedge ellipsoid-body ring attractor. Every epoch an <span style="color:var(--grn2)">identical twin brain</span> gets matched synthetic noise, so both readouts are <b>paired differences against a live null</b>. This never enters the coherence statistic — it is a second detector, not a source.</div>
+  </div>
+
+  <div class="term panel">
     <div class="ptop"><div class="ptitle">> DETECTOR vs CONTROL</div><div class="pmeta">the experiment</div></div>
     <div class="tele">
       <div class="cell det"><div class="k">Detector Z · physical</div><div class="v" id="physZ">–</div></div>
@@ -197,13 +211,20 @@
       <p>Each second, over the arms with a fresh draw: <code>Z = Σzᵢ/√N</code>, coherence <code>c = Z²</code> (<code>χ²₁</code>, mean 1 under independence). The walk is <code>Σ(c−1)</code>; session significance <code>Zc = Σ(c−1)/√(2N)</code> ≈ N(0,1). The same is computed separately for the physical subset (detectors) and the algorithmic subset (controls).</p>
       <h4>The context ring — kept, but outside the math</h4>
       <p>Solar wind, seismic, barometric, tide, river, air quality, ocean swell, NIST, Hacker News and GitHub update every few minutes — far too slow for a 1 Hz statistic, where they'd just be one frozen value re-counted hundreds of times. So they ride alongside as honest, timestamped context and <em>never</em> touch the coherence number. (Browser-hostile ones flag "may need proxy.")</p>
+      <h4>The fly brain — a second way of looking, not a second source</h4>
+      <p>The statistic above reads the swarm one way: sum the arms, square it, watch the walk. That is a very specific hypothesis about what coherence would look like — <em>everything leaning the same way at once</em>. A real <em>Drosophila</em> brain solves a different problem with the same kind of input, and it is worth borrowing the shape.</p>
+      <p>Each epoch the fresh arms are injected into a <b>48-glomerulus antennal lobe</b> with divisive gain control, projected onto <b>2000 Kenyon cells</b> through <b>6 random claws</b> each, and squeezed by a single <b>APL</b>-style inhibitory neuron into a <b>~5% sparse code</b> — the mushroom body's random-projection hash. That code drives one <b>MBON</b> through synapses that <em>depress when used and slowly recover</em>: a pattern the brain has seen before lands on weakened synapses and produces <b>low</b> MBON drive. In parallel the same input drives a <b>16-wedge ellipsoid-body ring attractor</b> (local excitation, global inhibition) whose bump sharpness <code>PVA</code> reports how directionally consistent the drive is. Parameters follow the published hemibrain / FlyWire figures; the wiring itself is redrawn from fresh entropy at every boot, because individual flies differ.</p>
+      <p>So it answers two questions the sum cannot: <b>has this configuration happened before?</b> (familiarity) and <b>does the swarm point somewhere?</b> (bump coherence).</p>
+      <h4>Why it cannot manufacture coherence</h4>
+      <p>Because it is <em>not an arm</em>. It is derived from the arms, so putting it in the statistic would be exactly the mistake the rule below forbids — it is kept strictly outside. And because it is derived, it has no analytic null: a circuit with memory has no clean χ². So every epoch an <b>identical twin brain</b> — same wiring, same parameters, same number of live channels — is fed <em>matched synthetic noise</em>, and both readouts are reported as <b>paired differences against that live null</b>: <code>Z_fam</code> from <code>MBON_null − MBON_signal</code>, <code>Z_ring</code> from <code>PVA_signal − PVA_null</code>. Positive means the real swarm looks more structured than matched noise.</p>
+      <p class="warn">Read those two Z's loosely. The synaptic-depression trace carries memory across epochs, so consecutive samples are <em>not</em> independent and the paired Z runs optimistic — treat |Z| ≈ 2 as unremarkable, and do not multiply the two p-values together: both readouts share the same input, so they are correlated by construction.</p>
       <h4 class="warn">The one rule, and what this is NOT</h4>
       <p class="warn">Every arm must be an <em>independent draw</em> — never arm B derived from arm A; that single mistake manufactures fake coherence. It measures <em>coincidence, not meaning</em> — Jung's synchronicity is what an observer reads into a coincidence; no instrument supplies that. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by chance — calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
-      <p style="color:var(--faint);margin-top:12px">Sources: crypto.getRandomValues · device timing &amp; motion · drand · Coinbase · Wikimedia · Bluesky · Mastodon (live) · NOAA · USGS · Open-Meteo · NIST · HN · GitHub (context). Independent tool, unaffiliated.</p>
+      <p style="color:var(--faint);margin-top:12px">Sources: crypto.getRandomValues · device timing &amp; motion · drand · Coinbase · Wikimedia · Bluesky · Mastodon (live) · NOAA · USGS · Open-Meteo · NIST · HN · GitHub (context). Readout circuit after the <em>Drosophila</em> mushroom body and central complex (hemibrain / FlyWire connectome literature) — a model of that circuit's shape, not fly data. Independent tool, unaffiliated.</p>
     </div>
   </details>
 
-  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>per-second independent entropy swarm + slow context ring · extend via the recipe atop the script</footer>
+  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>per-second independent entropy swarm + slow context ring + fly-brain readout · extend via the recipe atop the script</footer>
 </div>
 
 <script>
@@ -216,7 +237,9 @@
      Use a SEPARATE seed (seed32()) — never reuse another arm's sequence.
    • A slow real-world feed (context only, never in the statistic): tier:'context'
      plus a poller that sets s.last and s.t (see the context pollers below).
-   The math, charts, gauge, log and skin pick it up automatically.
+   The math, charts, gauge, log and skin pick it up automatically — and so does
+   the FLY.BRAIN readout, which maps every non-context arm onto its own antennal-
+   lobe glomeruli and its own compass direction at boot.
    ────────────────────────────────────────────────────────────────────────── */
 (function(){
   "use strict";
@@ -328,15 +351,111 @@
     return c;
   }
 
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     FLY.BRAIN — a Drosophila-connectome-shaped readout stage.
+
+     This is NOT an arm and never enters the coherence statistic. It reads the
+     same per-epoch swarm vector the statistic reads, but through a circuit
+     instead of a sum — and every epoch an identical twin brain is fed matched
+     synthetic noise, so each readout is a paired difference against a live null.
+
+     Circuit, with the shape (not the wiring diagram) taken from the published
+     hemibrain / FlyWire connectome work on Drosophila melanogaster:
+       antennal lobe   ~50 glomeruli, divisive gain control across channels
+       Kenyon cells    ~2000 per hemisphere, ~6 PN "claws" each, wiring random
+       APL             one giant GABAergic cell → k-winner-take-all, ~5% active
+       MBON            KC→MBON synapses depress on use → familiarity readout
+       EB / EPG        16 wedges, local excitation + global inhibition → a bump
+     Wiring is redrawn from fresh entropy at every boot: individual flies differ.
+     ────────────────────────────────────────────────────────────────────────── */
+  var FLYC='#c08bff';
+  var FB={NPN:48,NKC:2000,CLAW:6,SPARSE:.05,NW:16,DEP:.055,REC:.0045,TRACE:150};
+  FB.K=Math.max(1,Math.round(FB.NKC*FB.SPARSE));
+  var FBS={N:0,fs:0,fss:0,rs:0,rss:0,famZ:0,ringZ:0};
+
+  function fbWire(seed){var r=mkSplitmix32(seed),cl=new Int16Array(FB.NKC*FB.CLAW);
+    for(var j=0;j<FB.NKC;j++){var seen={};for(var c=0;c<FB.CLAW;c++){var g;do{g=(r()*FB.NPN)|0;}while(seen[g]);seen[g]=1;cl[j*FB.CLAW+c]=g;}}
+    return cl;}
+  function fbMap(seed){var r=mkSplitmix32(seed),m={};
+    SRC.forEach(function(s){if(s.tier==='context')return;
+      var g=[],w=[];for(var i=0;i<3;i++){g.push((r()*FB.NPN)|0);w.push(r()<.5?-1:1);}
+      m[s.id]={g:g,w:w,th:2*Math.PI*r()};});
+    return m;}
+  function fbBrain(){var B={pn:new Float32Array(FB.NPN),kc:new Float32Array(FB.NKC),
+    w:new Float32Array(FB.NKC),act:[],mbon:1,ring:new Float32Array(FB.NW),
+    heat:new Float32Array(FB.NKC),pva:0,head:0};
+    B.w.fill(1);B.ring.fill(1);return B;}
+
+  var RK=[.12,.55,1,.55,.12];
+  function fbRing(B,drv){
+    var NW=FB.NW,r=B.ring,out=new Float32Array(NW),i,k,idx,a,th;
+    for(i=0;i<NW;i++)r[i]=r[i]*.80+drv[i];                       // leaky integration
+    for(i=0;i<NW;i++){a=0;for(k=-2;k<=2;k++){idx=((i+k)%NW+NW)%NW;a+=r[idx]*RK[k+2];}out[i]=a;}
+    var mean=0;for(i=0;i<NW;i++)mean+=out[i];mean/=NW;           // global inhibition
+    var tot=0;for(i=0;i<NW;i++){r[i]=Math.max(0,out[i]-.88*mean);tot+=r[i];}
+    if(!(tot>1e-9)){for(i=0;i<NW;i++)r[i]=1;tot=NW;}
+    var sc=NW/tot,sx=0,sy=0,S=0;
+    for(i=0;i<NW;i++){r[i]*=sc;th=2*Math.PI*i/NW;sx+=r[i]*Math.cos(th);sy+=r[i]*Math.sin(th);S+=r[i];}
+    B.pva=S>0?Math.sqrt(sx*sx+sy*sy)/S:0;                        // bump vector strength
+    B.head=Math.atan2(sy,sx);}
+
+  function fbStep(B,drv,rdrv){
+    var NPN=FB.NPN,NKC=FB.NKC,CLAW=FB.CLAW,cl=FB.wire,pn=B.pn,kc=B.kc,i,j,c,a,b;
+    var s2=0;for(i=0;i<NPN;i++)s2+=drv[i]*drv[i];                // AL divisive normalization
+    var g=1/Math.sqrt(1+s2/NPN);
+    for(i=0;i<NPN;i++)pn[i]=drv[i]*g;
+    for(j=0;j<NKC;j++){a=0;b=j*CLAW;for(c=0;c<CLAW;c++)a+=pn[cl[b+c]];kc[j]=a;}
+    var srt=Array.prototype.slice.call(kc);srt.sort(function(p,q){return q-p;});
+    var thr=srt[FB.K-1],act=[];                                   // APL k-winner-take-all
+    for(j=0;j<NKC&&act.length<FB.K;j++)if(kc[j]>=thr)act.push(j);
+    B.act=act;
+    var m=0;for(i=0;i<act.length;i++)m+=B.w[act[i]];              // MBON drive
+    if(act.length)B.mbon=m/act.length;
+    for(i=0;i<act.length;i++)B.w[act[i]]*=(1-FB.DEP);             // use-dependent depression
+    for(j=0;j<NKC;j++){B.w[j]+=FB.REC*(1-B.w[j]);B.heat[j]*=.72;} // recovery + raster decay
+    for(i=0;i<act.length;i++)B.heat[act[i]]=1;
+    fbRing(B,rdrv);}
+
+  function fbDrive(fresh,useNull){
+    var drv=new Float32Array(FB.NPN),rdrv=new Float32Array(FB.NW),i,k,th;
+    for(i=0;i<fresh.length;i++){
+      var s=fresh[i],mp=FB.map[s.id];if(!mp)continue;
+      var z=useNull?clampZ(invNorm(randU())):s._lastz;            // twin gets a fresh draw
+      for(k=0;k<mp.g.length;k++)drv[mp.g[k]]+=mp.w[k]*z;
+      for(k=0;k<FB.NW;k++){th=2*Math.PI*k/FB.NW;rdrv[k]+=z*Math.exp(2.2*(Math.cos(th-mp.th)-1));}
+    }
+    return {pn:drv,ring:rdrv};}
+
+  function fbZ(sum,sumsq,N){if(N<8)return 0;var m=sum/N,v=sumsq/N-m*m;
+    if(!(v>1e-12))return 0;return clampZ(m/Math.sqrt(v/N));}
+
+  function fbEpoch(fresh){
+    if(fresh.length<2)return;
+    var ds=fbDrive(fresh,false),dn=fbDrive(fresh,true);
+    fbStep(FB.sig,ds.pn,ds.ring);
+    fbStep(FB.nul,dn.pn,dn.ring);
+    var df=FB.nul.mbon-FB.sig.mbon,dr=FB.sig.pva-FB.nul.pva;      // paired differences
+    FBS.N++;FBS.fs+=df;FBS.fss+=df*df;FBS.rs+=dr;FBS.rss+=dr*dr;
+    FBS.famZ=fbZ(FBS.fs,FBS.fss,FBS.N);FBS.ringZ=fbZ(FBS.rs,FBS.rss,FBS.N);
+    FB.tr.push([FB.sig.mbon,FB.nul.mbon]);if(FB.tr.length>FB.TRACE)FB.tr.shift();
+    var mz=Math.abs(FBS.famZ)>=Math.abs(FBS.ringZ)?FBS.famZ:FBS.ringZ;
+    if(FBS.N>60&&Math.abs(mz)>3&&Date.now()-(FB.logT||0)>45000){FB.logT=Date.now();
+      logLine('fly.brain :: READOUT Z='+(mz>=0?'+':'')+mz.toFixed(2)+' :: STILL CHANCE-COMPATIBLE','a');}}
+
+  FB.wire=fbWire(seed32());FB.map=fbMap(seed32());
+  FB.sig=fbBrain();FB.nul=fbBrain();FB.tr=[];
+
   function epoch(){
-    var fz=[],pz=[],az=[],nfresh=0;
+    var fz=[],pz=[],az=[],fresh=[];
     SRC.forEach(function(s){
       if(s.tier==='context')return;
       var z=stepArm(s);
-      if(z!=null){s._lastz=z;s.z=z;s.has=true;s._freshTick=true;nfresh++;fz.push(z);if(s.tier==='physical')pz.push(z);else az.push(z);}
+      if(z!=null){s._lastz=z;s.z=z;s.has=true;s._freshTick=true;fz.push(z);fresh.push(s);if(s.tier==='physical')pz.push(z);else az.push(z);}
       else s._freshTick=false;
     });
     var c=accPush(FULL,fz);accPush(PHYS,pz);accPush(ALGO,az);
+    fbEpoch(fresh);
     if(c!=null){
       var now=Date.now();
       if(c>6&&now-glitchT>4000){glitchT=now;glitch();logLine('!! NETVAR SPIKE c='+c.toFixed(1)+' :: WITHIN CHANCE','a');}
@@ -456,6 +575,74 @@
     if(n>=1){x.shadowColor='rgba(0,255,102,.45)';x.shadowBlur=7;x.strokeStyle='#39ff8f';x.lineWidth=1.6;x.beginPath();for(var k=0;k<n;k++){var px=PX(k),py=Y(FULL.pulse[k]);k?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();x.shadowBlur=0;x.lineTo(PX(n-1),y1);x.lineTo(PX(0),y1);x.closePath();x.fillStyle='rgba(0,255,102,.07)';x.fill();}}
 
   // ---------- source rows ----------
+
+  function drawFly(){
+    var cv=document.getElementById('flyb');if(!cv)return;
+    var H=Math.min(210,Math.max(158,Math.round((cv.clientWidth||320)*0.50)));
+    var st=setup(cv,H),x=st.x,W=st.w;x.clearRect(0,0,W,H);
+    var B=FB.sig,Nl=FB.nul,NW=FB.NW,i,k,th,rr,px,py;
+    var ringW=Math.min(H-4,Math.round(W*0.46)),cx=3+ringW/2,cy=H/2,R=ringW/2-12,R0=R*0.30;
+
+    x.strokeStyle='rgba(0,255,102,.09)';x.lineWidth=1;
+    [R0,(R0+R)/2,R].forEach(function(q){x.beginPath();x.arc(cx,cy,q,0,6.2832);x.stroke();});
+
+    var mx=1e-6;for(i=0;i<NW;i++){if(B.ring[i]>mx)mx=B.ring[i];if(Nl.ring[i]>mx)mx=Nl.ring[i];}
+
+    x.strokeStyle='rgba(47,156,95,.5)';x.lineWidth=1;x.setLineDash([3,3]);x.beginPath();
+    for(i=0;i<=NW;i++){k=i%NW;th=-Math.PI/2+2*Math.PI*k/NW;rr=R0+(Nl.ring[k]/mx)*(R-R0);
+      px=cx+Math.cos(th)*rr;py=cy+Math.sin(th)*rr;i?x.lineTo(px,py):x.moveTo(px,py);}
+    x.stroke();x.setLineDash([]);
+
+    x.lineCap='round';x.lineWidth=Math.max(2,ringW/24);
+    for(i=0;i<NW;i++){th=-Math.PI/2+2*Math.PI*i/NW;var f=B.ring[i]/mx;rr=R0+f*(R-R0);
+      x.strokeStyle=FLYC;x.globalAlpha=.28+.72*f;
+      x.beginPath();x.moveTo(cx+Math.cos(th)*R0,cy+Math.sin(th)*R0);x.lineTo(cx+Math.cos(th)*rr,cy+Math.sin(th)*rr);x.stroke();}
+    x.globalAlpha=1;x.lineCap='butt';
+
+    var hd=B.head-Math.PI/2,L=R0+B.pva*(R-R0);
+    x.strokeStyle='#ffd23f';x.lineWidth=2;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.cos(hd)*L,cy+Math.sin(hd)*L);x.stroke();
+    x.fillStyle='#ffd23f';x.beginPath();x.arc(cx+Math.cos(hd)*L,cy+Math.sin(hd)*L,2.6,0,6.2832);x.fill();
+    x.font='9px monospace';x.textAlign='center';
+    x.fillStyle='rgba(35,107,58,1)';x.fillText('EB.COMPASS · '+NW+' wedges',cx,H-4);
+    x.fillStyle=FLYC;x.fillText('PVA '+B.pva.toFixed(2),cx,cy+R+9);
+    x.textAlign='left';
+
+    var rx0=ringW+14,rx1=W-3,ry0=15,ry1=H-17,RW=rx1-rx0,RH=ry1-ry0;
+    if(RW>44&&RH>24){
+      x.fillStyle='rgba(0,255,102,.045)';x.fillRect(rx0,ry0,RW,RH);
+      var cell=Math.max(2,Math.floor(Math.sqrt(RW*RH/FB.NKC)));
+      var cols=Math.max(1,Math.floor(RW/cell)),rows=Math.max(1,Math.floor(RH/cell));
+      var cap=Math.min(FB.NKC,cols*rows),d=Math.max(1,cell-1);
+      var ox=rx0+(RW-cols*cell)/2,oy=ry0+(RH-rows*cell)/2;
+      for(var j=0;j<cap;j++){var h=B.heat[j];if(h<.05)continue;
+        x.globalAlpha=h>1?1:h;x.fillStyle=h>.92?'#f0e2ff':FLYC;
+        x.fillRect(ox+(j%cols)*cell,oy+((j/cols)|0)*cell,d,d);}
+      x.globalAlpha=1;x.font='9px monospace';x.fillStyle='rgba(35,107,58,1)';
+      x.fillText('KC.RASTER · '+FB.NKC+' cells',rx0,ry0-5);
+      x.fillText('APL k-WTA → '+B.act.length+' active',rx0,H-5);
+    }
+  }
+
+  function drawMbon(){
+    var cv=document.getElementById('flym');if(!cv)return;
+    var H=Math.min(118,Math.max(84,Math.round((cv.clientWidth||320)*0.27)));
+    var st=setup(cv,H),x=st.x,W=st.w;x.clearRect(0,0,W,H);
+    var pl=8,pr=36,pt=12,pb=13,x0=pl,x1=W-pr,y0=pt,y1=H-pb;
+    var tr=FB.tr,n=tr.length,i,lo=1e9,hi=-1e9;
+    for(i=0;i<n;i++){for(var k=0;k<2;k++){var v=tr[i][k];if(v<lo)lo=v;if(v>hi)hi=v;}}
+    if(!(hi>lo)){lo=0;hi=1;}
+    var pad=(hi-lo)*.20+1e-4;lo-=pad;hi+=pad;
+    function PX(q){return x0+(n<=1?.5:q/(n-1))*(x1-x0);}
+    function Y(v){return y1-((v-lo)/(hi-lo))*(y1-y0);}
+    gline(x,x0,x1,y0);gline(x,x0,x1,(y0+y1)/2);gline(x,x0,x1,y1);
+    function line(k,col,wid,dash){x.setLineDash(dash||[]);x.strokeStyle=col;x.lineWidth=wid;x.beginPath();
+      for(var q=0;q<n;q++){var a=PX(q),b=Y(tr[q][k]);q?x.lineTo(a,b):x.moveTo(a,b);}x.stroke();x.setLineDash([]);}
+    if(n>1){line(1,'rgba(47,156,95,.7)',1,[3,3]);line(0,FLYC,1.6);}
+    x.font='9px monospace';x.fillStyle='rgba(35,107,58,1)';
+    x.fillText('MBON drive — low = familiar · dashed = null twin',x0+1,y0-3);
+    if(n){x.fillStyle=FLYC;x.fillText(FB.sig.mbon.toFixed(3),x1+4,Math.max(y0+4,Math.min(y1,Y(FB.sig.mbon)+3)));}
+  }
+
   function buildSources(){var box=document.getElementById('sources');box.innerHTML='';
     SECTIONS.forEach(function(sec){
       var hdr=document.createElement('div');hdr.className='catrow'+(sec.ctx?' ctx':'');hdr.textContent=sec.title;box.appendChild(hdr);
@@ -514,8 +701,14 @@
     var pz=PHYS.N>0?PHYS.sum/Math.sqrt(2*PHYS.N):0,azc=ALGO.N>0?ALGO.sum/Math.sqrt(2*ALGO.N):0;
     document.getElementById('physZ').textContent=PHYS.N>0?((pz>=0?'+':'')+pz.toFixed(2)+'  p='+fmtP(pz)):'… need ≥2 live';
     document.getElementById('algoZ').textContent=ALGO.N>0?((azc>=0?'+':'')+azc.toFixed(2)+'  p='+fmtP(azc)):'…';
+    var ffz=FBS.famZ,frz=FBS.ringZ,fbOk=FBS.N>=8;
+    document.getElementById('fbFam').textContent=fbOk?((ffz>=0?'+':'')+ffz.toFixed(2)+'  p='+fmtP(ffz)):'\u2026 calibrating';
+    document.getElementById('fbRing').textContent=fbOk?((frz>=0?'+':'')+frz.toFixed(2)+'  p='+fmtP(frz)):'\u2026';
+    document.getElementById('fbSp').textContent=FBS.N?((100*FB.sig.act.length/FB.NKC).toFixed(1)+'%  '+FB.sig.act.length+'/'+FB.NKC+' KC'):'\u2013';
+    document.getElementById('fbHd').textContent=FBS.N?(((FB.sig.head*180/Math.PI+360)%360).toFixed(0)+'\u00b0  PVA '+FB.sig.pva.toFixed(3)):'\u2013';
+    document.getElementById('fbMeta').textContent='paired vs null twin \u00b7 N='+FBS.N+' \u00b7 not an arm';
     setVerdict(Zc);renderLog();
-    try{drawGauge();drawWalk();drawPulse();}catch(e){}
+    try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();}catch(e){}
   }
 
   // ---------- digital rain ----------
@@ -528,12 +721,13 @@
 
   // ---------- boot ----------
   initRain();buildSources();logLine('synchronicity_machine :: BOOT');logLine('entropy swarm :: SEEDED');
+  logLine('fly.brain :: CONNECTOME WIRED '+FB.NKC+' KC \u00d7 '+FB.CLAW+' claws');
   document.getElementById('motionBtn').addEventListener('click',enableMotion);
   startSources();
   setInterval(epoch,EPOCH_MS);
   setInterval(stepRain,42);
   setInterval(renderData,140);
-  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();}catch(e){}},150);});
+  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();}catch(e){}},150);});
 })();
 </script>
 </body>
