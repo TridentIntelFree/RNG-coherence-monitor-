@@ -97,6 +97,8 @@
   .cell.det{border-color:rgba(125,184,255,.3)}.cell.det .v{color:var(--blu)}
   .cell.nul{border-color:rgba(47,156,95,.4)}.cell.nul .v{color:var(--grn2)}
   .cell.fly{border-color:rgba(192,139,255,.34)}.cell.fly .v{color:var(--fly)}
+  .diag{font-size:9px;letter-spacing:.04em;color:var(--faint);margin-top:3px;font-variant-numeric:tabular-nums}
+  .diag.bad{color:var(--amber)}
 
   details{margin-top:12px;overflow:hidden}
   summary{cursor:pointer;list-style:none;padding:13px 15px;font-size:13px;letter-spacing:.05em;color:var(--grn);display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -155,7 +157,7 @@
   <div class="term panel p2">
     <div class="ptop"><div class="ptitle">> CUMULATIVE COHERENCE</div><div class="pmeta">Σ(χ²−1) walk</div></div>
     <canvas id="walk" class="chart"></canvas>
-    <div class="hint">↑ above band = sustained <span style="color:var(--amber)">order</span> · flat inside = <span style="color:var(--grn)">chaos / chance</span> · ↓ below = over-dispersion. Bands assume independent draws.</div>
+    <div class="hint">↑ above band = sustained <span style="color:var(--amber)">order</span> · flat inside = <span style="color:var(--grn)">chaos / chance</span> · ↓ below = over-dispersion. Window shows the last 2000 epochs; the ±1.96σ / ±3σ bands are drawn for <em>those</em> epochs and widened by the measured variance-inflation factor.</div>
   </div>
 
   <div class="term panel p3">
@@ -181,8 +183,9 @@
     <div class="tele">
       <div class="cell det"><div class="k">Detector Z · physical</div><div class="v" id="physZ">–</div></div>
       <div class="cell nul"><div class="k">Control Z · algorithmic</div><div class="v" id="algoZ">–</div></div>
+      <div class="cell" style="grid-column:1/-1"><div class="k">Detector − Control · the actual test</div><div class="v" id="diffZ">–</div></div>
     </div>
-    <div class="hint">If the <span style="color:var(--blu)">physical detectors</span> ever drift while the <span style="color:var(--grn2)">deterministic controls</span> hold at chance, that gap is the only thing here worth a second look.</div>
+    <div class="hint">If the <span style="color:var(--blu)">physical detectors</span> ever drift while the <span style="color:var(--grn2)">deterministic controls</span> hold at chance, that gap is the only thing here worth a second look — so it is measured directly. The two subsets use <em>disjoint</em> arms, so their session Z's are independent and <code>(Z_det − Z_ctl)/√2</code> is itself ≈N(0,1). The controls are deterministic and cannot carry a real anomaly; if they move too, it is chance moving both.</div>
   </div>
 
   <div class="term panel">
@@ -260,8 +263,6 @@
   function seed32(){var b=new Uint32Array(1);crypto.getRandomValues(b);return b[0]>>>0;}
   function hexU(hex){var h=(hex||"").slice(0,13);if(h.length<13)return randU();var v=parseInt(h,16);if(!isFinite(v))return randU();return (v+.5)/Math.pow(16,13);}
   function mix(acc,t){return (((acc^(((t*1000)>>>0)))>>>0)*2654435761)>>>0;}
-  function Ewma(hl){this.a=1-Math.pow(2,-1/hl);this.m=0;this.v=1;this.init=false;}
-  Ewma.prototype.push=function(x){if(!isFinite(x))return 0;if(!this.init){this.m=x;this.v=1;this.init=true;return 0;}var z=(x-this.m)/Math.sqrt(Math.max(this.v,1e-9));var d=x-this.m;this.m+=this.a*d;this.v=(1-this.a)*(this.v+this.a*d*d);return clampZ(z);};
 
   // ---------- PRNG factories (each returns u()->[0,1), independently seeded) ----------
   function mkXorshift32(s){var x=s>>>0||1;return function(){x^=x<<13;x>>>=0;x^=x>>>17;x^=x<<5;x>>>=0;return (x>>>0)/4294967296;};}
@@ -282,7 +283,7 @@
     S({id:'bskyA',tier:'physical',label:'BLUESKY.ARRIVAL',color:'#7db8ff',type:'arrival',desc:'Bluesky post arrival-timing jitter'}),
     S({id:'mastoA',tier:'physical',label:'MASTODON.ARRIVAL',color:'#7db8ff',type:'arrival',desc:'Mastodon arrival-timing jitter'}),
     S({id:'drand',tier:'physical',label:'DRAND.QUICKNET',color:'#b98bff',type:'drand',desc:'League of Entropy — ~3 s rounds'}),
-    S({id:'coin',tier:'physical',label:'COINBASE.TAPE',color:'#ffd23f',type:'coinbase',desc:'BTC-USD realized vol / trade tape',ew:new Ewma(60)}),
+    S({id:'coin',tier:'physical',label:'COINBASE.TAPE',color:'#ffd23f',type:'arrival',desc:'BTC-USD trade arrival + tick entropy'}),
     // ---- ALGORITHMIC NULL CONTROLS (live) ----
     S({id:'csprng',tier:'algo',label:'CSPRNG',color:'#2f9c5f',type:'csprng',desc:'crypto.getRandomValues — OS entropy'}),
     S({id:'xorshift',tier:'algo',label:'XORSHIFT32',color:'#2f9c5f',type:'prng',desc:'xorshift PRNG',u:mkXorshift32(seed32())}),
@@ -291,8 +292,8 @@
     S({id:'mulberry',tier:'algo',label:'MULBERRY32',color:'#2f9c5f',type:'prng',desc:'mulberry PRNG',u:mkMulberry32(seed32())}),
     S({id:'lehmer',tier:'algo',label:'LEHMER.MINSTD',color:'#2f9c5f',type:'prng',desc:'Lehmer LCG',u:mkLehmer(seed32())}),
     // ---- CONTEXT RING (NOT in statistic) ----
-    S({id:'solar',tier:'context',label:'SOLAR.WIND',color:'#39ff8f',desc:'NOAA IMF |B| @ L1',ew:new Ewma(1)}),
-    S({id:'quake',tier:'context',label:'SEISMIC',color:'#39ff8f',desc:'USGS quakes/hr',ew:new Ewma(1)}),
+    S({id:'solar',tier:'context',label:'SOLAR.WIND',color:'#39ff8f',desc:'NOAA IMF |B| @ L1'}),
+    S({id:'quake',tier:'context',label:'SEISMIC',color:'#39ff8f',desc:'USGS quakes/hr'}),
     S({id:'press',tier:'context',label:'BAROMETRIC',color:'#39ff8f',desc:'Open-Meteo surface pressure'}),
     S({id:'tide',tier:'context',label:'TIDE.LEVEL',color:'#39ff8f',desc:'NOAA water level (may need proxy)'}),
     S({id:'river',tier:'context',label:'RIVER.FLOW',color:'#39ff8f',desc:'USGS discharge (may need proxy)'}),
@@ -309,7 +310,9 @@
     {key:'context',title:'CONTEXT · NOT IN STATISTIC',ctx:true}
   ];
 
-  function makeAcc(){return {N:0,sum:0,walk:[],pulse:[],cEW:1,cEWa:1-Math.pow(2,-1/15)};}
+  var HLAG=24,HW=HLAG+1;
+  function makeAcc(){return {N:0,sum:0,sq:0,walk:[],pulse:[],cEW:1,cEWa:1-Math.pow(2,-1/15),
+    ring:new Float64Array(HW),head:0,cross:new Float64Array(HW)};}
   var FULL=makeAcc(),PHYS=makeAcc(),ALGO=makeAcc();
   var T0=Date.now(),glitchT=0,logT=0;
   var LOG=[];
@@ -336,7 +339,6 @@
       case 'motion': if(s._on&&(s._n||0)>0){var u=((s._acc>>>0)+0.5)/4294967296;s._n=0;return clampZ(invNorm(u));}return null;
       case 'arrival':if((s._n||0)>0){var u2=((s._acc>>>0)+0.5)/4294967296;s._n=0;return clampZ(invNorm(u2));}return null;
       case 'drand':  if(s._fresh){s._fresh=false;return s._z;}return null;
-      case 'coinbase':if((s._n||0)>0){var rv=Math.sqrt(s._sumsq||0);s._sumsq=0;s._n=0;return s.ew.push(rv);}return null;
     }
     return null;
   }
@@ -344,11 +346,52 @@
   function accPush(acc,zs){
     if(zs.length<2)return null;
     var sum=0;for(var i=0;i<zs.length;i++)sum+=zs[i];
-    var Z=sum/Math.sqrt(zs.length),c=Z*Z;
-    acc.N++;acc.sum+=(c-1);acc.cEW+=acc.cEWa*(c-acc.cEW);
+    var Z=sum/Math.sqrt(zs.length),c=Z*Z,x=c-1;
+    acc.N++;acc.sum+=x;acc.sq+=x*x;acc.cEW+=acc.cEWa*(c-acc.cEW);
+    var L=Math.min(HLAG,acc.N-1);                       // running autocovariances of the (c-1) series
+    for(var k=1;k<=L;k++)acc.cross[k]+=x*acc.ring[((acc.head-k+1)%HW+HW)%HW];
+    acc.head=(acc.head+1)%HW;acc.ring[acc.head]=x;
     acc.walk.push(acc.sum);if(acc.walk.length>2000)acc.walk.splice(0,acc.walk.length-2000);
     acc.pulse.push(c);if(acc.pulse.length>120)acc.pulse.shift();
     return c;
+  }
+
+  /* Session significance.
+     Under the stated assumption — every arm an independent draw, every epoch
+     independent of the last — c is chi-squared_1, Var(c)=2, and Zc = S/sqrt(2N).
+     That assumption IS the experiment, so it is not taken on trust: the long-run
+     variance of the (c-1) series is estimated from the series itself
+     (Newey-West, Bartlett window). When the epochs really are independent this
+     collapses to exactly sqrt(2N) and nothing changes; when an arm carries
+     memory it widens the error bar instead of letting it read as signal. */
+  function sessionZ(acc){
+    var N=acc.N;if(!N)return {z:0,raw:0,vif:1,ok:true,n:0};
+    var raw=acc.sum/Math.sqrt(2*N);
+    if(N<60)return {z:raw,raw:raw,vif:1,ok:true,n:N};
+    var m=acc.sum/N,g0=acc.sq/N-m*m;
+    if(!(g0>1e-12))return {z:raw,raw:raw,vif:1,ok:true,n:N};
+    var L=Math.max(1,Math.min(HLAG,Math.floor(4*Math.pow(N/100,2/9)))),s2=g0,k;
+    for(k=1;k<=L;k++)s2+=2*(1-k/(L+1))*(acc.cross[k]/(N-k)-m*m);
+    if(!(s2>1e-9))s2=g0;
+    var vif=s2/2;
+    return {z:acc.sum/Math.sqrt(N*s2),raw:raw,vif:vif,ok:vif<1.25,n:N};
+  }
+
+  /* Per-arm independence diagnostics. The one rule is that every arm is an
+     independent draw; this measures whether each one actually is, instead of
+     assuming it. */
+  function armObs(s,z){
+    s.aN=(s.aN||0)+1;s.aS=(s.aS||0)+z;s.aQ=(s.aQ||0)+z*z;
+    if(s.aP!=null){s.aX=(s.aX||0)+z*s.aP;s.aC=(s.aC||0)+1;}
+    s.aP=z;
+  }
+  function armDiag(s){
+    if(!s.aN||s.aN<40)return null;
+    var m=s.aS/s.aN,v=s.aQ/s.aN-m*m;if(!(v>1e-12))return null;
+    var sd=Math.sqrt(v),r1=(s.aC&&s.aC>=40)?Math.max(-1,Math.min(1,(s.aX/s.aC-m*m)/v)):null;
+    var bad=(s.aN>=150&&Math.abs(sd-1)*Math.sqrt(2*s.aN)>4)||
+            (r1!=null&&s.aC>=150&&Math.abs(r1)*Math.sqrt(s.aC)>4);
+    return {n:s.aN,sd:sd,r1:r1,bad:bad};
   }
 
 
@@ -451,15 +494,16 @@
     SRC.forEach(function(s){
       if(s.tier==='context')return;
       var z=stepArm(s);
-      if(z!=null){s._lastz=z;s.z=z;s.has=true;s._freshTick=true;fz.push(z);fresh.push(s);if(s.tier==='physical')pz.push(z);else az.push(z);}
-      else s._freshTick=false;
+      if(z!=null){s._lastz=z;s.z=z;s.has=true;s._freshTick=true;armObs(s,z);fz.push(z);fresh.push(s);if(s.tier==='physical')pz.push(z);else az.push(z);}
+      else {s._freshTick=false;s.aP=null;}   // a gap breaks the lag-1 pairing
     });
     var c=accPush(FULL,fz);accPush(PHYS,pz);accPush(ALGO,az);
     fbEpoch(fresh);
     if(c!=null){
       var now=Date.now();
       if(c>6&&now-glitchT>4000){glitchT=now;glitch();logLine('!! NETVAR SPIKE c='+c.toFixed(1)+' :: WITHIN CHANCE','a');}
-      if(now-logT>30000&&FULL.N>10){logT=now;var zc=FULL.sum/Math.sqrt(2*FULL.N);logLine('session :: N='+FULL.N+' Zc='+(zc>=0?'+':'')+zc.toFixed(2)+' p='+fmtP(zc));}
+      if(now-logT>30000&&FULL.N>10){logT=now;var sz=sessionZ(FULL);
+        logLine('session :: N='+FULL.N+' Zc='+(sz.z>=0?'+':'')+sz.z.toFixed(2)+' p='+fmtP(sz.z)+(sz.vif>1.1?' vif='+sz.vif.toFixed(2):''));}
     }
   }
   function glitch(){var w=document.getElementById('wrap');w.classList.remove('glitch');void w.offsetWidth;w.classList.add('glitch');rain.boost=performance.now()+800;}
@@ -476,11 +520,14 @@
     }catch(e){mark(s,0);}
   }
   function startCoinbase(){
-    var s=byId.coin;s._sumsq=0;s._n=0;
+    var s=byId.coin;s._n=0;
     try{
       var ws=new WebSocket('wss://ws-feed.exchange.coinbase.com');
       ws.onopen=function(){mark(s,1);ws.send(JSON.stringify({type:'subscribe',product_ids:['BTC-USD'],channels:['matches']}));};
-      ws.onmessage=function(e){try{var m=JSON.parse(e.data);if((m.type==='match'||m.type==='last_match')&&m.price){var p=parseFloat(m.price);if(isFinite(p)){if(s._p){var r=Math.log(p/s._p);s._sumsq=(s._sumsq||0)+r*r;s._n=(s._n||0)+1;}s._p=p;s.last='$'+Math.round(p).toLocaleString();if(s.status!=='live')mark(s,1);}}}catch(_){}};
+      ws.onmessage=function(e){try{var m=JSON.parse(e.data);if((m.type==='match'||m.type==='last_match')&&m.price){var p=parseFloat(m.price);if(isFinite(p)){
+        var bits=((((p*1e8)>>>0)^(((parseFloat(m.size)||0)*1e8)>>>0))^((m.trade_id|0)>>>0))>>>0;
+        s._acc=mix((s._acc||(2166136261>>>0))^bits,performance.now());s._n=(s._n||0)+1;
+        s.last='$'+Math.round(p).toLocaleString();if(s.status!=='live')mark(s,1);}}}catch(_){}};
       ws.onerror=function(){mark(s,0);};
       ws.onclose=function(){mark(s,0);setTimeout(startCoinbase,15000);};
     }catch(e){mark(s,0);}
@@ -559,14 +606,17 @@
     x.fillStyle='#d2ffdd';x.font="34px 'VT323',monospace";x.textAlign='center';x.fillText('c='+c.toFixed(2),cx,cy-r*0.32);}
 
   function drawWalk(){var cv=document.getElementById('walk');var H=Math.min(210,Math.max(165,Math.round((cv.clientWidth||320)*0.56)));var s=setup(cv,H),x=s.x,W=s.w;x.clearRect(0,0,W,H);var pl=8,pr=32,pt=12,pb=16,x0=pl,x1=W-pr,y0=pt,y1=H-pb;
-    var n=FULL.walk.length,maxN=Math.max(FULL.N,1),env=3*Math.sqrt(2*maxN),ymax=Math.max(env*1.08,2);for(var i=0;i<n;i++){var av=Math.abs(FULL.walk[i]);if(av*1.1>ymax)ymax=av*1.1;}
-    function PX(k,m){return x0+((m||maxN)<=1?.5:k/((m||maxN)-1))*(x1-x0);}function Y(v){return (y0+y1)/2 - v/ymax*((y1-y0)/2);}
-    function band(m,fill){x.beginPath();for(var k=0;k<maxN;k++)x.lineTo(PX(k),Y(m*Math.sqrt(2*(k+1))));for(var k2=maxN-1;k2>=0;k2--)x.lineTo(PX(k2),Y(-m*Math.sqrt(2*(k2+1))));x.closePath();x.fillStyle=fill;x.fill();}
-    band(3,'rgba(255,77,94,.06)');band(1.96,'rgba(255,210,63,.07)');
-    function el(m,col){x.strokeStyle=col;x.lineWidth=1;x.setLineDash([4,4]);for(var sg=-1;sg<=1;sg+=2){x.beginPath();for(var k=0;k<maxN;k++){var e=sg*m*Math.sqrt(2*(k+1));k?x.lineTo(PX(k),Y(e)):x.moveTo(PX(k),Y(e));}x.stroke();}x.setLineDash([]);}
-    el(3,'rgba(255,77,94,.5)');el(1.96,'rgba(255,210,63,.55)');gline(x,x0,x1,Y(0),'rgba(0,255,102,.18)');
+    var n=FULL.walk.length,N=Math.max(FULL.N,1),k0=Math.max(0,N-n);   // k0 = first epoch actually on screen
+    var vif=Math.max(1,sessionZ(FULL).vif);                            // widen the bands if epochs carry memory
+    var env=3*Math.sqrt(2*N*vif),ymax=Math.max(env*1.08,2);for(var i=0;i<n;i++){var av=Math.abs(FULL.walk[i]);if(av*1.1>ymax)ymax=av*1.1;}
+    function PX(k){return x0+(n<=1?.5:k/(n-1))*(x1-x0);}function Y(v){return (y0+y1)/2 - v/ymax*((y1-y0)/2);}
+    function E(k){return Math.sqrt(2*(k0+k+1)*vif);}                   // envelope at the epoch this pixel maps to
+    function band(m,fill){x.beginPath();for(var k=0;k<n;k++)x.lineTo(PX(k),Y(m*E(k)));for(var k2=n-1;k2>=0;k2--)x.lineTo(PX(k2),Y(-m*E(k2)));x.closePath();x.fillStyle=fill;x.fill();}
+    function el(m,col){x.strokeStyle=col;x.lineWidth=1;x.setLineDash([4,4]);for(var sg=-1;sg<=1;sg+=2){x.beginPath();for(var k=0;k<n;k++){var e=sg*m*E(k);k?x.lineTo(PX(k),Y(e)):x.moveTo(PX(k),Y(e));}x.stroke();}x.setLineDash([]);}
+    if(n>=1){band(3,'rgba(255,77,94,.06)');band(1.96,'rgba(255,210,63,.07)');el(3,'rgba(255,77,94,.5)');el(1.96,'rgba(255,210,63,.55)');}
+    gline(x,x0,x1,Y(0),'rgba(0,255,102,.18)');
     x.fillStyle='rgba(63,156,95,.8)';x.font="10px 'Share Tech Mono',monospace";x.textAlign='right';x.textBaseline='middle';x.fillText('+'+ymax.toFixed(0),x1-1,Y(ymax*.92));x.fillText('-'+ymax.toFixed(0),x1-1,Y(-ymax*.92));x.fillText('0',x1-1,Y(0));
-    if(n>=1){x.shadowColor='rgba(0,255,102,.5)';x.shadowBlur=8;x.strokeStyle='#00ff66';x.lineWidth=1.9;x.beginPath();for(var ci=0;ci<n;ci++){var cx2=PX(ci,n),cy2=Y(FULL.walk[ci]);ci?x.lineTo(cx2,cy2):x.moveTo(cx2,cy2);}x.stroke();x.shadowBlur=0;x.fillStyle='#d2ffdd';x.beginPath();x.arc(PX(n-1,n),Y(FULL.walk[n-1]),3,0,6.28);x.fill();}
+    if(n>=1){x.shadowColor='rgba(0,255,102,.5)';x.shadowBlur=8;x.strokeStyle='#00ff66';x.lineWidth=1.9;x.beginPath();for(var ci=0;ci<n;ci++){var cx2=PX(ci),cy2=Y(FULL.walk[ci]);ci?x.lineTo(cx2,cy2):x.moveTo(cx2,cy2);}x.stroke();x.shadowBlur=0;x.fillStyle='#d2ffdd';x.beginPath();x.arc(PX(n-1),Y(FULL.walk[n-1]),3,0,6.28);x.fill();}
     else{x.fillStyle='rgba(63,156,95,.8)';x.font="11px 'Share Tech Mono',monospace";x.textAlign='center';x.fillText('accumulating epochs…',W/2,(y0+y1)/2);}}
 
   function drawPulse(){var cv=document.getElementById('pulse');var H=Math.min(150,Math.max(115,Math.round((cv.clientWidth||320)*0.38)));var s=setup(cv,H),x=s.x,W=s.w;x.clearRect(0,0,W,H);var pl=8,pr=28,pt=10,pb=12,x0=pl,x1=W-pr,y0=pt,y1=H-pb;
@@ -650,7 +700,7 @@
         var row=document.createElement('div');row.className='src'+(sec.ctx?' ctx':'');row.id='row_'+s.id;
         row.innerHTML='<span class="sdot" style="color:'+s.color+'"></span>'+
           '<div class="meta"><div class="nm">'+s.label+' <span class="tag">'+(sec.ctx?'CTX':(s.tier==='algo'?'NULL':'DET'))+'</span></div><div class="desc">'+s.desc+'</div>'+
-          (sec.ctx?'':'<div class="barwrap"><div class="mid"></div><div class="bar" id="bar_'+s.id+'" style="background:'+s.color+'"></div></div>')+'</div>'+
+          (sec.ctx?'':'<div class="barwrap"><div class="mid"></div><div class="bar" id="bar_'+s.id+'" style="background:'+s.color+'"></div></div><div class="diag" id="dg_'+s.id+'"></div>')+'</div>'+
           '<div class="zv" id="zv_'+s.id+'">—</div>';
         box.appendChild(row);
       });
@@ -671,6 +721,12 @@
       else if(!s.has){dot.style.background='var(--faint)';zv.textContent='…';if(bar)bar.style.width='0';}
       else{dot.style.background=s.color;var z=s._lastz,w=Math.min(Math.abs(z),4)/4*49;if(bar){bar.style.background=s.color;bar.style.boxShadow=Math.abs(z)>2?'0 0 8px '+s.color:'none';if(z>=0){bar.style.left='50%';bar.style.width=w+'%';}else{bar.style.left=(50-w)+'%';bar.style.width=w+'%';}}
         zv.textContent=(z>=0?'+':'')+z.toFixed(2);zv.style.opacity=s._freshTick?'1':'.5';}
+      var dg=document.getElementById('dg_'+s.id),d=armDiag(s);
+      if(dg){
+        if(!d)dg.textContent='';
+        else{dg.textContent='n '+d.n+' \u00b7 \u03c3\u0302 '+d.sd.toFixed(2)+(d.r1!=null?(' \u00b7 r\u2081 '+(d.r1>=0?'+':'')+d.r1.toFixed(3)):'');
+             dg.className='diag'+(d.bad?' bad':'');}
+      }
     });
     return {liveCount:liveCount,total:total};}
 
@@ -692,15 +748,21 @@
     var b=document.getElementById('badge'),bt=document.getElementById('badgeText');b.className='badge live';bt.textContent='LIVE SWARM';
     document.getElementById('nSrc').textContent=nfresh;
     document.getElementById('tSrc').textContent=sc.liveCount+' / '+sc.total;
-    var Zc=FULL.N>0?FULL.sum/Math.sqrt(2*FULL.N):0;
-    document.getElementById('zcVal').textContent=FULL.N>0?((Zc>=0?'+':'')+Zc.toFixed(2)):'–';
-    document.getElementById('zcSub').textContent='cumulative // N='+FULL.N;
-    document.getElementById('pVal').textContent=FULL.N>0?fmtP(Zc):'–';
-    document.getElementById('cVal').textContent=FULL.N>0?FULL.cEW.toFixed(2):'–';
+    var SZ=sessionZ(FULL),Zc=SZ.z;
+    document.getElementById('zcVal').textContent=FULL.N>0?((Zc>=0?'+':'')+Zc.toFixed(2)):'\u2013';
+    document.getElementById('zcSub').textContent='N='+FULL.N+(SZ.vif>1.05?' \u00b7 vif '+SZ.vif.toFixed(2):' \u00b7 HAC');
+    document.getElementById('pVal').textContent=FULL.N>0?fmtP(Zc):'\u2013';
+    document.getElementById('cVal').textContent=FULL.N>0?FULL.cEW.toFixed(2):'\u2013';
     document.getElementById('tN').textContent=FULL.N;
-    var pz=PHYS.N>0?PHYS.sum/Math.sqrt(2*PHYS.N):0,azc=ALGO.N>0?ALGO.sum/Math.sqrt(2*ALGO.N):0;
-    document.getElementById('physZ').textContent=PHYS.N>0?((pz>=0?'+':'')+pz.toFixed(2)+'  p='+fmtP(pz)):'… need ≥2 live';
-    document.getElementById('algoZ').textContent=ALGO.N>0?((azc>=0?'+':'')+azc.toFixed(2)+'  p='+fmtP(azc)):'…';
+    var SP=sessionZ(PHYS),SA=sessionZ(ALGO);
+    function fmtZ(S){return (S.z>=0?'+':'')+S.z.toFixed(2)+'  p='+fmtP(S.z)+(S.vif>1.05?'  vif '+S.vif.toFixed(2):'');}
+    document.getElementById('physZ').textContent=PHYS.N>0?fmtZ(SP):'\u2026 need \u22652 live';
+    document.getElementById('algoZ').textContent=ALGO.N>0?fmtZ(SA):'\u2026';
+    var dEl=document.getElementById('diffZ');
+    if(PHYS.N>=60&&ALGO.N>=60){var dz=(SP.z-SA.z)/Math.SQRT2,adz=Math.abs(dz);
+      dEl.textContent=(dz>=0?'+':'')+dz.toFixed(2)+'  p='+fmtP(dz);
+      dEl.style.color=adz<1.96?'var(--txt)':(adz<3?'var(--amber)':'var(--red)');}
+    else dEl.textContent='\u2026 need \u226560 epochs on both subsets';
     var ffz=FBS.famZ,frz=FBS.ringZ,fbOk=FBS.N>=8;
     document.getElementById('fbFam').textContent=fbOk?((ffz>=0?'+':'')+ffz.toFixed(2)+'  p='+fmtP(ffz)):'\u2026 calibrating';
     document.getElementById('fbRing').textContent=fbOk?((frz>=0?'+':'')+frz.toFixed(2)+'  p='+fmtP(frz)):'\u2026';
