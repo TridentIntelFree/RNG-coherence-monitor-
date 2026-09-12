@@ -114,9 +114,11 @@
 
   /* ---- seed extractor ---- */
   #seedPanel,#chanPanel{position:relative;overflow:hidden}
-  #seedRain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.38;border-radius:6px}
-  #seedPanel>*{position:relative;z-index:1}
-  #seedPanel>#seedRain{z-index:0}
+  #seedPanel>*:not(#seedRain){position:relative;z-index:1}
+  #seedPanel>#seedRain{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;
+    pointer-events:none;opacity:.62;border-radius:6px;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.22) 26%,rgba(0,0,0,.22) 74%,#000 100%);
+    mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.22) 26%,rgba(0,0,0,.22) 74%,#000 100%)}
   html.nofx #seedRain{display:none}
   .vow{border:1px solid rgba(0,255,102,.22);border-radius:5px;padding:9px 11px;margin-bottom:10px;background:rgba(0,30,10,.35)}
   .vow ul{margin:5px 0 0;padding-left:16px;font-size:10.5px;color:var(--dim);line-height:1.65}
@@ -1253,7 +1255,7 @@
     return Math.max(0,-Math.log(pu)/Math.LN2);}
 
   // ---------- entropy layers ----------
-  var EAPT_W=512,EFOLD=4096,EASSESS=2048;
+  var EAPT_W=512,EFOLD=4096,EASSESS=1024;
   function EP(id,label,cls,desc){return {id:id,label:label,cls:cls,desc:desc,
     on:(cls!=='optin'),locked:(cls==='floor'),buf:[],n:0,hist:new Uint32Array(256),
     rctPrev:-1,rctRun:0,rctMax:0,rctFail:false,rctC:0,
@@ -1431,18 +1433,24 @@
     var have=etotal(),pct=Math.min(100,have/need*100);
     var m=document.getElementById('sdMeter'),mw=document.getElementById('sdMeterWrap');
     m.style.width=pct+'%';mw.className='meter'+(pct>=100?' full':'');
+    var live=0;EPOOL.forEach(function(P){if(P.on&&P.cls!=='public'&&ebits(P)>0)live++;});
     document.getElementById('sdBits').textContent=
-      'assessed secret entropy ≈ '+Math.round(have).toLocaleString()+' bits of '+need+
-      ' target'+(pct>=100?' · saturated':'')+
-      ' · public sources counted as zero · the CSPRNG floor applies regardless';
+      'Seed strength: '+need+'-bit, guaranteed by the CSPRNG floor on its own. '+
+      'Corroborating entropy independently assessed so far ≈ '+Math.round(have).toLocaleString()+
+      ' bits across '+live+' other layer'+(live===1?'':'s')+
+      (pct>=100?' · saturated':' · still assessing')+
+      ' · public sources counted as zero.';
   }
   function drawPad(){
     var cv=document.getElementById('sdPad');if(!cv)return;
     var H=Math.min(120,Math.max(76,Math.round((cv.clientWidth||320)*0.22)));
     var st=setup(cv,H),x=st.x,W=st.w;x.clearRect(0,0,W,H);
-    var n=PAD.pts.length,now=performance.now(),i;
-    if(!n){x.fillStyle='rgba(35,107,58,1)';x.font='10px monospace';x.textAlign='center';
-      x.fillText('drag / scribble here — your movement becomes entropy',W/2,H/2+3);x.textAlign='left';return;}
+    var n=PAD.pts.length,now=performance.now(),i,fresh=0;
+    for(i=0;i<n;i++)if(now-PAD.pts[i][2]<4000)fresh++;
+    if(!fresh){                                   // no live trail: put the invitation back
+      x.fillStyle='rgba(35,107,58,1)';x.font='10px monospace';x.textAlign='center';
+      x.fillText('drag / scribble here — your movement becomes entropy',W/2,H/2+3);
+      x.textAlign='left';return;}
     for(i=1;i<n;i++){
       var a=PAD.pts[i-1],b=PAD.pts[i],age=(now-b[2])/4000;
       if(age>1)continue;
@@ -1632,25 +1640,31 @@
     if(!SRAIN.cv)return;
     var p=document.getElementById('seedPanel');
     SRAIN.w=p.clientWidth;SRAIN.h=p.clientHeight;
+    // Hard clamp: the panel's height must never be driven by this canvas. If some
+    // future rule drops it back into normal flow, this stops the feedback loop dead.
+    if(SRAIN.h>3000)SRAIN.h=3000;               // generous enough to cover the panel, tight enough to bound a regression
     if(!(SRAIN.w>0&&SRAIN.h>0))return;
     SRAIN.cv.width=SRAIN.w;SRAIN.cv.height=SRAIN.h;
-    SRAIN.fs=Math.max(11,Math.round(SRAIN.w/44));
-    var n=Math.ceil(SRAIN.w/SRAIN.fs);
-    SRAIN.cols=[];SRAIN.sp=[];
-    for(var i=0;i<n;i++){SRAIN.cols[i]=Math.random()*-40;SRAIN.sp[i]=0.5+Math.random()*0.9;}}
+    SRAIN.fs=Math.max(10,Math.round(SRAIN.w/46));
+    var n=Math.ceil(SRAIN.w/SRAIN.fs),rows=SRAIN.h/SRAIN.fs;
+    // One drop per column leaves a tall panel almost empty, so scale the pool to
+    // the panel's height: several independent drops share each column.
+    var count=Math.max(n,Math.round(n*Math.max(1.8,rows/26))),i;
+    SRAIN.drops=[];
+    for(i=0;i<count;i++)SRAIN.drops.push({c:i%n,y:Math.random()*rows*1.3-rows*0.3,sp:0.55+Math.random()*1.15});}
   function stepSeedRain(){
     var x=SRAIN.ctx;if(!x||!FX.on||document.hidden)return;
     if(!(SRAIN.w>0&&SRAIN.h>0))return;
-    var hot=Math.min(1,SRAIN.heat),i;
-    x.fillStyle='rgba(0,6,0,'+(0.11+0.05*hot)+')';x.fillRect(0,0,SRAIN.w,SRAIN.h);
+    var hot=Math.min(1,SRAIN.heat),i,d,py;
+    x.fillStyle='rgba(0,6,0,'+(0.075+0.045*hot)+')';x.fillRect(0,0,SRAIN.w,SRAIN.h);
     x.font=SRAIN.fs+'px monospace';
-    for(i=0;i<SRAIN.cols.length;i++){
-      var py=SRAIN.cols[i]*SRAIN.fs;
-      if(py>0&&py<SRAIN.h+SRAIN.fs){
-        x.fillStyle=(Math.random()<0.05+0.15*hot)?'#d2ffdd':(hot>0.45?'#7dffab':'#00ff66');
-        x.fillText(rain.chars.charAt((Math.random()*rain.chars.length)|0),i*SRAIN.fs,py);}
-      SRAIN.cols[i]+=SRAIN.sp[i]*(0.45+1.7*hot);
-      if(py>SRAIN.h&&Math.random()>0.965)SRAIN.cols[i]=-2;}
+    for(i=0;i<SRAIN.drops.length;i++){
+      d=SRAIN.drops[i];py=d.y*SRAIN.fs;
+      if(py>-SRAIN.fs&&py<SRAIN.h+SRAIN.fs){
+        x.fillStyle=(Math.random()<0.06+0.16*hot)?'#e8fff0':(hot>0.45?'#7dffab':'#00ff66');
+        x.fillText(rain.chars.charAt((Math.random()*rain.chars.length)|0),d.c*SRAIN.fs,py);}
+      d.y+=d.sp*(0.5+1.6*hot);
+      if(py>SRAIN.h&&Math.random()>0.93)d.y=-1-Math.random()*10;}
     if(hot>0.02){                                   // glow where the rain lands
       var g=x.createLinearGradient(0,SRAIN.h-30,0,SRAIN.h);
       g.addColorStop(0,'rgba(0,255,102,0)');
