@@ -86,11 +86,30 @@ The paired differences are not independent across epochs — the MBON depression
 trace and the ring attractor both carry state — so the same Newey–West correction
 the main statistic uses is applied here, with the same one-directional floor.
 
-Read them loosely anyway. Measured against a pure null over 360 independent cold
-boots of 1200 epochs, `Z_fam` crosses |Z|>1.96 about 6.7% of the time and `Z_ring`
-about 5.6%, against a nominal 5%: the MBON trace's memory runs to ~220 epochs,
-past what any practical lag window recovers. These are exploratory readouts, not
-calibrated evidence. And never multiply the two p-values — they share an input.
+Read them loosely anyway. Measured against a pure null over 560 independent cold
+boots of 1200 epochs, `Z_fam` crosses |Z|>1.96 about 6.2% of the time and `Z_ring`
+about 5.4%, against a nominal 5% — and the far tail is worse, with |Z|>3 landing
+perhaps 2–3× more often than the nominal 0.27%. The MBON trace's memory runs to
+~220 epochs, past what any practical lag window recovers. These are exploratory
+readouts, not calibrated evidence. Never multiply the two p-values — they share
+an input.
+
+### Depth
+
+Five MB compartments (γ, β′, β, α′, α) read the same sparse code at their own
+rates — relaxing over roughly 36, 69, 138, 278 and 526 seconds. β keeps the exact
+constants the statistic was calibrated against, verified bit-for-bit against the
+old single-compartment model over 1500 epochs. Alongside: a stereotyped **lateral
+horn**, a bump that **rotates** under a PEN-like drive, the 16→18 **protocerebral
+bridge** mapping, and a **fan-shaped body** whose eight layers smear the bump into
+a comet trail.
+
+**KC code reuse** measures how much of this epoch's sparse code the previous epoch
+already used. Its baseline is *not* K/N — uneven glomerular drive makes some Kenyon
+cells win more often, so random input already reuses above K/N. The null twin is
+the honest baseline and is shown beside it. Independent draws: signal and null
+together near 6–9%. Near-frozen input: signal **76%**, null 7%. Slow drift: **38%**
+vs 9%. Common mode barely moves it — that is the ring's job.
 
 ## The seed extractor
 
