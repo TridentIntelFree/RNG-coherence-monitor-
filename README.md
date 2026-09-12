@@ -128,6 +128,33 @@ opened offline.
 wallets or production keys here. And no seed is ever served from a server — a seed
 that came off a server is known to that server.
 
+## The keyed channel
+
+A seed is a key, so the extractor feeds a message box: **AES-256-GCM**, key derived
+from the seed by HKDF under its own domain label, a fresh random 96-bit nonce per
+message, envelope tag bound in as AAD. Output is a `SYNC1.…` blob you carry
+yourself — no server, no account, no transport.
+
+The cipher comes from **WebCrypto**, not from this page. The in-page SHA-256 exists
+so HKDF works air-gapped; a block cipher is not something to improvise. Where
+WebCrypto is unavailable the panel disables itself rather than falling back to
+something weaker.
+
+**The key travels separately — that is the whole security model.** Compare
+fingerprints first: derived from the key, reveals nothing about it, safe to read
+aloud. Matching fingerprints mean matching keys.
+
+⚠️ Not a secure messenger. No forward secrecy — a leaked key opens every past
+message. No sender identity: anyone with the key can forge. Replays undetected.
+Use Signal for real conversations. Use this to hand someone a note with no server
+in the middle, and rotate keys freely.
+
+Verified: round-trip across independent instances, wrong key rejected, single
+flipped ciphertext or nonce bit rejected by the GCM tag, 120 encryptions of
+identical plaintext yielding 120 distinct nonces and ciphertexts, short keys
+refused, and message bodies rendered via `textContent` so a hostile decrypted
+payload cannot inject markup.
+
 ## What this is not
 
 It measures **coincidence, not meaning**. Run long enough and you *will* cross

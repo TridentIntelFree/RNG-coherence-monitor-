@@ -113,6 +113,11 @@
   .diag.bad{color:var(--amber)}
 
   /* ---- seed extractor ---- */
+  #seedPanel,#chanPanel{position:relative;overflow:hidden}
+  #seedRain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.38;border-radius:6px}
+  #seedPanel>*{position:relative;z-index:1}
+  #seedPanel>#seedRain{z-index:0}
+  html.nofx #seedRain{display:none}
   .vow{border:1px solid rgba(0,255,102,.22);border-radius:5px;padding:9px 11px;margin-bottom:10px;background:rgba(0,30,10,.35)}
   .vow ul{margin:5px 0 0;padding-left:16px;font-size:10.5px;color:var(--dim);line-height:1.65}
   .vow li{margin:1px 0}
@@ -156,6 +161,19 @@
   .danger-note{border:1px solid rgba(255,77,94,.35);border-radius:5px;padding:9px 11px;margin-top:10px;
     background:rgba(40,0,6,.3);font-size:10.5px;color:#ffb3bb;line-height:1.6}
   .danger-note b{color:var(--red);font-weight:400;letter-spacing:.08em}
+  .fp{font-size:11px;color:var(--amber);letter-spacing:.22em;margin-top:7px;font-variant-numeric:tabular-nums}
+  .fp span{color:var(--faint);letter-spacing:.1em;font-size:9.5px}
+  .msgs{margin-top:10px;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto}
+  .msg{border:1px solid var(--hair);border-radius:5px;padding:7px 9px;background:rgba(0,0,0,.4)}
+  .msg .mh{font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:8px}
+  .msg .mb{font-size:12px;color:var(--bright);margin-top:4px;white-space:pre-wrap;word-break:break-word}
+  .msg.out{border-color:rgba(125,184,255,.3)}.msg.out .mh{color:var(--blu)}
+  .msg.in{border-color:rgba(0,255,102,.3)}.msg.in .mh{color:var(--grn)}
+  .msg.err{border-color:rgba(255,77,94,.4)}.msg.err .mh,.msg.err .mb{color:var(--red)}
+  .steps{counter-reset:st;margin:6px 0 0;padding-left:0;list-style:none;font-size:10.5px;color:var(--dim);line-height:1.6}
+  .steps li{counter-increment:st;padding-left:22px;position:relative;margin:3px 0}
+  .steps li::before{content:counter(st);position:absolute;left:0;top:0;width:15px;height:15px;border-radius:50%;
+    border:1px solid var(--edge);color:var(--grn);font-size:9px;display:flex;align-items:center;justify-content:center}
 
   details{margin-top:12px;overflow:hidden}
   summary{cursor:pointer;list-style:none;padding:13px 15px;font-size:13px;letter-spacing:.05em;color:var(--grn);display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -222,6 +240,7 @@
   </div>
 
   <div class="term panel" id="seedPanel">
+    <canvas id="seedRain" aria-hidden="true"></canvas>
     <div class="ptop"><div class="ptitle">> SEED.EXTRACTOR</div><div class="pmeta" id="sdMeta">local only · never transmitted</div></div>
 
     <div class="vow">
@@ -276,6 +295,55 @@
       — it is already one of the arms above, and a value served from a web page can never match it.
     </div>
     <div class="hint">Each visitor extracts their own seed on their own device. Nothing is ever published or shared — a seed that came off a server would be known to that server, which is the one thing a seed must never be.</div>
+  </div>
+
+  <div class="term panel" id="chanPanel">
+    <div class="ptop"><div class="ptitle">> KEYED.CHANNEL</div><div class="pmeta" id="chMeta">AES-256-GCM · no server</div></div>
+
+    <div class="vow">
+      <div class="vowh">How to use it</div>
+      <ol class="steps">
+        <li>Generate a seed above, then press <b>Use current seed</b> — that becomes the channel key.</li>
+        <li>Give your correspondent the key <b>through a different channel</b> than the messages. Read it aloud, hand it over in person, use a separate app. Never send both down the same pipe.</li>
+        <li>Check that your <b>fingerprints match</b>. The fingerprint is derived from the key but does not reveal it, so it is safe to compare out loud.</li>
+        <li>Type a message, press <b>Encrypt</b>, and send the <code>SYNC1.…</code> blob however you like — it is meaningless without the key.</li>
+      </ol>
+    </div>
+
+    <div class="sdf">
+      <label for="chKey">Channel key</label>
+      <input id="chKey" class="sdin" placeholder="hex — or press Use current seed" autocomplete="off" spellcheck="false">
+      <button id="chUse" class="cbtn" type="button">↑ Use current seed</button>
+    </div>
+    <div class="fp" id="chFp"><span>fingerprint</span> —</div>
+
+    <textarea id="chMsg" class="sdta" autocomplete="off" spellcheck="false"
+      placeholder="Message to encrypt…"></textarea>
+    <div class="ctl">
+      <button id="chEnc" class="cbtn" type="button">🔒 Encrypt</button>
+      <button id="chDec" class="cbtn" type="button">🔓 Decrypt</button>
+      <button id="chCopy" class="cbtn" type="button">⧉ Copy blob</button>
+      <button id="chClear" class="cbtn danger" type="button">⌫ Clear all</button>
+    </div>
+    <textarea id="chBlob" class="sdta" autocomplete="off" spellcheck="false"
+      placeholder="Ciphertext appears here. Paste one in to decrypt it."></textarea>
+
+    <div class="msgs" id="chLog"></div>
+
+    <div class="danger-note">
+      <b>What this is, exactly.</b> A pre-shared-key message box: AES-256-GCM, key
+      derived from your seed by HKDF, random 96-bit nonce per message, authenticated so
+      tampering is detected. It runs entirely in this tab — there is no server, no account
+      and no transport, which is why you carry the blob yourself.
+      <br><br>
+      <b>What it is not.</b> Not a secure messenger. There is <em>no forward secrecy</em> —
+      if the key leaks later, every message ever sent with it can be read. There is no
+      sender identity: anyone holding the key can write messages that look like yours.
+      Replays are not detected. Nothing here protects a device that is already compromised.
+      For real conversations that need those properties, use Signal. Use this for a note you
+      want to hand someone without a server in the middle, and rotate the key freely — a new
+      seed takes one press.
+    </div>
   </div>
 
   <div class="term panel p2">
@@ -368,6 +436,12 @@
       <p>Each layer runs the two <b>NIST SP 800-90B continuous health tests</b> — Repetition Count and Adaptive Proportion, at α=2<sup>−20</sup> — plus the <b>MCV min-entropy estimator</b> (§6.3.1), live, on its own byte stream. Min-entropy is assessed once and then <em>latched</em>: the cutoffs are held fixed against that assessment, because recomputing them from the live estimate would let a failing source drag its own cutoff down with it and never trip. A source that degrades after assessment fires its test and immediately drops to claiming <b>zero</b> bits — it stays in the mix, since mixing cannot hurt, but it stops counting toward the total.</p>
       <p>Public sources are counted as <b>zero secret bits</b>, always. drand, Wikipedia, Bluesky, Mastodon and the Coinbase tape are unpredictable in advance but anyone can watch the same events, so they add depth and independence, not secrecy. Pretending otherwise would be the same species of error as counting a deterministic PRNG as an entropy source.</p>
       <p class="warn">A browser tab is not a safe place to make long-lived secrets — extensions, injected scripts and swap can all reach this page's memory. Do not generate wallets or production signing keys here. And note what is <em>absent</em>: no seed is ever served from a server, because a seed that came off a server is known to that server. Every visitor extracts their own, locally. If you want public verifiable randomness instead, that is drand's job, and drand is already one of the arms.</p>
+      <h4>The keyed channel</h4>
+      <p>A seed is a key, so the extractor feeds a message box. <b>AES-256-GCM</b>, key derived from the seed by HKDF with its own domain label, a fresh random 96-bit nonce per message, and the envelope tag <code>SYNC1</code> bound in as additional authenticated data. The result is <code>SYNC1.…</code> — carry it however you like.</p>
+      <p>The cipher comes from <b>WebCrypto</b>, not from this page. The in-page SHA-256 exists so HKDF works air-gapped; a block cipher is not something to improvise. Where WebCrypto is unavailable the panel <em>disables itself</em> rather than quietly falling back to something weaker.</p>
+      <p><b>The key travels separately. That is the entire security model.</b> Hand it over in person, read it aloud, use a different app — never down the same pipe as the messages. Compare <b>fingerprints</b> first: the fingerprint is derived from the key but does not reveal it, so it is safe to say out loud, and matching fingerprints mean matching keys.</p>
+      <p>There is no server here, no account and no transport, which is why you carry the blob yourself. Nothing about a message is stored: the transcript lives in the tab and dies with it.</p>
+      <p class="warn">What it is not: not a secure messenger. <em>No forward secrecy</em> — if the key leaks later, every message ever sent under it opens. No sender identity: anyone with the key can write messages that look like yours. Replays are not detected. Nothing protects a device already compromised. For real conversations needing those properties, use Signal. Use this to hand someone a note with no server in the middle, and rotate keys freely — a new seed is one press. A wrong key and a tampered message fail identically, which is the point of an AEAD.</p>
       <h4 class="warn">The one rule, and what this is NOT</h4>
       <p class="warn">Every arm must be an <em>independent draw</em> — never arm B derived from arm A; that single mistake manufactures fake coherence. (Which is why the fly brain is a readout and not an arm, and why each arm's independence is measured on screen rather than assumed.) It measures <em>coincidence, not meaning</em> — Jung's synchronicity is what an observer reads into a coincidence; no instrument supplies that. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by chance — calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
       <p style="color:var(--faint);margin-top:12px">Sources: crypto.getRandomValues · device timing &amp; motion · drand · Coinbase · Wikimedia · Bluesky · Mastodon (live) · NOAA · USGS · Open-Meteo · NIST · HN · GitHub (context). Readout circuit after the <em>Drosophila</em> mushroom body and central complex (hemibrain / FlyWire connectome literature) — a model of that circuit's shape, not fly data. Independent tool, unaffiliated.</p>
@@ -958,6 +1032,8 @@
     document.getElementById('fbHd').textContent=FBS.N?(((FB.sig.head*180/Math.PI+360)%360).toFixed(0)+'\u00b0  PVA '+FB.sig.pva.toFixed(3)):'\u2013';
     document.getElementById('fbMeta').textContent='paired vs null twin \u00b7 N='+FBS.N+' \u00b7 not an arm';
     setVerdict(Zc);renderLog();renderSeed();
+    (function(){var p=document.getElementById('seedPanel');
+      if(p&&(p.clientHeight!==SRAIN.h||p.clientWidth!==SRAIN.w))sizeSeedRain();})();
     try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();drawPad();}catch(e){}
   }
 
@@ -1209,6 +1285,7 @@
         if(P.aptC&&P.aptCount>=P.aptC)P.aptFail=true;
         if(P.aptI>=EAPT_W){P.aptI=0;P.aptCount=0;}}
     }
+    if(P.on)SRAIN.heat=Math.min(1.6,SRAIN.heat+bytes.length*0.006);   // rain reacts to real arrivals
     if(P.n-P._lh>=256){P._lh=P.n;
       var h=mcvH(P.hist,P.n);
       if(h!=null){
@@ -1241,8 +1318,8 @@
       out[i]=(acc>>>24)&255;}
     return out;}
   function edrip(){                                   // continuous background collection
-    var c=new Uint8Array(8);crypto.getRandomValues(c);epush('csprng',c);c.fill(0);
-    epush('jitter',jitterBytes(4));
+    var c=new Uint8Array(48);crypto.getRandomValues(c);epush('csprng',c);c.fill(0);
+    epush('jitter',jitterBytes(8));                   // ~43 s to assess the floor, ~4 min for jitter
   }
   var PAD={pts:[],last:0};
   function padPoint(x,y,p){
@@ -1392,6 +1469,7 @@
   function genSeed(){
     SEED=extractSeed();
     document.getElementById('sdStamp').textContent=new Date().toLocaleTimeString()+' · local only';
+    SRAIN.heat=1.6;
     showSeed();renderSeed();
     logLine('seed :: EXTRACTED '+(SEED.length*8)+' bits · NOT STORED');
   }
@@ -1431,6 +1509,155 @@
     if(!FX.on&&rain.ctx)rain.ctx.clearRect(0,0,rain.w,rain.h);
   }
 
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     KEYED.CHANNEL — a pre-shared-key message box built on the extractor.
+
+     AES-256-GCM from SubtleCrypto (audited, constant-time) rather than anything
+     hand-rolled: the in-page SHA-256 exists so HKDF works air-gapped, but a
+     cipher is not something to improvise. If SubtleCrypto is unavailable the
+     panel disables itself rather than silently falling back to something weaker.
+
+     Key = HKDF-SHA-256(seed, salt="SYNCHRONICITY/channel/v1", info=".../aes-gcm/v1").
+     Envelope = "SYNC1." + base64url(nonce[12] || ciphertext || tag[16]),
+     with "SYNC1" bound in as additional authenticated data.
+     ══════════════════════════════════════════════════════════════════════════ */
+  var CHAN={msgs:[],key:null};
+  function fromB64(s){
+    s=String(s).replace(/-/g,'+').replace(/_/g,'/').replace(/\s+/g,'');
+    while(s.length%4)s+='=';
+    var bin=atob(s),a=new Uint8Array(bin.length),i;
+    for(i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a;}
+  function chHasCrypto(){return !!(window.crypto&&crypto.subtle&&crypto.subtle.importKey);}
+  function chRawKey(){
+    var h=(document.getElementById('chKey').value||'').replace(/[^0-9a-fA-F]/g,'');
+    if(h.length<32)return null;                        // demand at least 128 bits
+    if(h.length%2)h=h.slice(0,-1);
+    var b=new Uint8Array(h.length>>1),i;
+    for(i=0;i<b.length;i++)b[i]=parseInt(h.substr(i*2,2),16);
+    return b;}
+  function chDerive(raw){
+    var enc=new TextEncoder();
+    var k=hkdf(raw,enc.encode('SYNCHRONICITY/channel/v1'),enc.encode('SYNCHRONICITY/channel/aes-gcm/v1'),32);
+    return crypto.subtle.importKey('raw',k,{name:'AES-GCM'},false,['encrypt','decrypt'])
+      .then(function(ck){k.fill(0);return ck;});}
+  function chFp(){
+    var el=document.getElementById('chFp'),raw=chRawKey();
+    if(!raw){el.innerHTML='<span>fingerprint</span> — <span>need ≥128 bits of key</span>';return;}
+    var d=sha256(cat([new TextEncoder().encode('SYNCFP|'),raw]));
+    var f=toHex(d).slice(0,12).replace(/(.{4})/g,'$1 ').trim().toUpperCase();
+    el.innerHTML='<span>fingerprint</span> '+f+' <span>· '+(raw.length*8)+'-bit key · compare this aloud</span>';
+    raw.fill(0);}
+  function chPush(dir,body,t){
+    CHAN.msgs.push({dir:dir,body:body,t:t||Date.now()});
+    if(CHAN.msgs.length>40)CHAN.msgs.shift();
+    chRender();}
+  function chRender(){
+    var box=document.getElementById('chLog'),h='',i;
+    for(i=0;i<CHAN.msgs.length;i++){
+      var m=CHAN.msgs[i],lab=m.dir==='out'?'ENCRYPTED · YOU':(m.dir==='in'?'DECRYPTED · RECEIVED':'ERROR');
+      h+='<div class="msg '+m.dir+'"><div class="mh"><span>'+lab+'</span><span>'+
+         new Date(m.t).toLocaleTimeString()+'</span></div><div class="mb"></div></div>';}
+    box.innerHTML=h;
+    var nodes=box.querySelectorAll('.mb');
+    for(i=0;i<CHAN.msgs.length;i++)nodes[i].textContent=CHAN.msgs[i].body;   // textContent: never parse as HTML
+    box.scrollTop=box.scrollHeight;}
+  function chEncrypt(){
+    if(!chHasCrypto())return;
+    var raw=chRawKey();
+    if(!raw){logLine('channel :: KEY TOO SHORT — NEED ≥128 BITS','a');return;}
+    var msg=document.getElementById('chMsg').value;
+    if(!msg){logLine('channel :: NOTHING TO ENCRYPT','a');raw.fill(0);return;}
+    var enc=new TextEncoder();
+    var pt=enc.encode(JSON.stringify({v:1,t:Date.now(),m:msg}));
+    var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
+    chDerive(raw).then(function(ck){
+      raw.fill(0);
+      return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:enc.encode('SYNC1'),tagLength:128},ck,pt);
+    }).then(function(ctb){
+      pt.fill(0);
+      document.getElementById('chBlob').value='SYNC1.'+toB64(cat([nonce,new Uint8Array(ctb)]));
+      document.getElementById('chMsg').value='';
+      chPush('out',msg,Date.now());
+      SRAIN.heat=1.4;
+      logLine('channel :: SEALED '+(ctb.byteLength+12)+'B · SEND THE KEY SEPARATELY');
+    }).catch(function(){logLine('channel :: ENCRYPT FAILED','a');});}
+  function chDecrypt(){
+    if(!chHasCrypto())return;
+    var raw=chRawKey();
+    if(!raw){logLine('channel :: KEY TOO SHORT — NEED ≥128 BITS','a');return;}
+    var txt=(document.getElementById('chBlob').value||'').trim();
+    var m=txt.match(/SYNC1\.([A-Za-z0-9\-_=]+)/);
+    if(!m){logLine('channel :: NO SYNC1 ENVELOPE FOUND','a');raw.fill(0);return;}
+    var blob;
+    try{blob=fromB64(m[1]);}catch(e){logLine('channel :: MALFORMED ENVELOPE','a');raw.fill(0);return;}
+    if(blob.length<29){logLine('channel :: ENVELOPE TOO SHORT','a');raw.fill(0);return;}
+    var enc=new TextEncoder();
+    chDerive(raw).then(function(ck){
+      raw.fill(0);
+      return crypto.subtle.decrypt({name:'AES-GCM',iv:blob.subarray(0,12),
+        additionalData:enc.encode('SYNC1'),tagLength:128},ck,blob.subarray(12));
+    }).then(function(ptb){
+      var o;
+      try{o=JSON.parse(new TextDecoder().decode(new Uint8Array(ptb)));}catch(e){o=null;}
+      if(o&&typeof o.m==='string'){chPush('in',o.m,o.t||Date.now());
+        logLine('channel :: OPENED · TAG VERIFIED');}
+      else{chPush('in',new TextDecoder().decode(new Uint8Array(ptb)),Date.now());}
+      SRAIN.heat=1.4;
+    }).catch(function(){
+      chPush('err','Could not decrypt. Either the key is wrong or the message was altered — '+
+        'AES-GCM refuses both the same way, which is the point.',Date.now());
+      logLine('channel :: AUTH FAILED — WRONG KEY OR TAMPERED','a');});}
+  function chCopyBlob(){
+    var v=document.getElementById('chBlob').value;
+    if(!v)return;
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(v).then(function(){logLine('channel :: BLOB COPIED');},
+        function(){logLine('channel :: COPY FAILED — SELECT MANUALLY','a');});
+    else logLine('channel :: COPY UNAVAILABLE — SELECT MANUALLY','a');}
+  function chClear(){
+    CHAN.msgs.length=0;
+    ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
+    chRender();chFp();
+    logLine('channel :: CLEARED');}
+
+  /* ---------- localised rain over the extractor ----------
+     Not decoration: the fall speed and glow track live entropy arrival, so the
+     panel visibly reacts when you scribble on the pad or a source delivers. */
+  var SRAIN={cv:null,ctx:null,cols:[],sp:[],fs:13,w:0,h:0,heat:0};
+  function initSeedRain(){
+    SRAIN.cv=document.getElementById('seedRain');if(!SRAIN.cv)return;
+    SRAIN.ctx=SRAIN.cv.getContext('2d');sizeSeedRain();}
+  function sizeSeedRain(){
+    if(!SRAIN.cv)return;
+    var p=document.getElementById('seedPanel');
+    SRAIN.w=p.clientWidth;SRAIN.h=p.clientHeight;
+    if(!(SRAIN.w>0&&SRAIN.h>0))return;
+    SRAIN.cv.width=SRAIN.w;SRAIN.cv.height=SRAIN.h;
+    SRAIN.fs=Math.max(11,Math.round(SRAIN.w/44));
+    var n=Math.ceil(SRAIN.w/SRAIN.fs);
+    SRAIN.cols=[];SRAIN.sp=[];
+    for(var i=0;i<n;i++){SRAIN.cols[i]=Math.random()*-40;SRAIN.sp[i]=0.5+Math.random()*0.9;}}
+  function stepSeedRain(){
+    var x=SRAIN.ctx;if(!x||!FX.on||document.hidden)return;
+    if(!(SRAIN.w>0&&SRAIN.h>0))return;
+    var hot=Math.min(1,SRAIN.heat),i;
+    x.fillStyle='rgba(0,6,0,'+(0.11+0.05*hot)+')';x.fillRect(0,0,SRAIN.w,SRAIN.h);
+    x.font=SRAIN.fs+'px monospace';
+    for(i=0;i<SRAIN.cols.length;i++){
+      var py=SRAIN.cols[i]*SRAIN.fs;
+      if(py>0&&py<SRAIN.h+SRAIN.fs){
+        x.fillStyle=(Math.random()<0.05+0.15*hot)?'#d2ffdd':(hot>0.45?'#7dffab':'#00ff66');
+        x.fillText(rain.chars.charAt((Math.random()*rain.chars.length)|0),i*SRAIN.fs,py);}
+      SRAIN.cols[i]+=SRAIN.sp[i]*(0.45+1.7*hot);
+      if(py>SRAIN.h&&Math.random()>0.965)SRAIN.cols[i]=-2;}
+    if(hot>0.02){                                   // glow where the rain lands
+      var g=x.createLinearGradient(0,SRAIN.h-30,0,SRAIN.h);
+      g.addColorStop(0,'rgba(0,255,102,0)');
+      g.addColorStop(1,'rgba(0,255,102,'+(0.22*hot).toFixed(3)+')');
+      x.fillStyle=g;x.fillRect(0,SRAIN.h-30,SRAIN.w,30);}
+    SRAIN.heat*=0.945;}
+
   // ---------- digital rain ----------
   var rain={cv:null,ctx:null,cols:[],fs:14,w:0,h:0,boost:0,chars:''};
   function buildChars(){var s='';for(var i=0x30A0;i<0x30FB;i++)s+=String.fromCharCode(i);s+='0123456789ABCDEFΦΨΩλΣ<>/\\|=+*';return s;}
@@ -1444,7 +1671,7 @@
   setFx(!(rmq&&rmq.matches));
   if(rmq&&rmq.addEventListener)rmq.addEventListener('change',function(e){setFx(!e.matches);});
 
-  initRain();buildSources();
+  initRain();initSeedRain();buildSources();
   var resumedN=loadState();
   logLine('synchronicity_machine :: BOOT');
   if(resumedN)logLine('session :: RESUMED N='+resumedN+' \u00b7 RUNNING SUMS RESTORED');
@@ -1460,10 +1687,12 @@
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){saveState();
       if(SEED){SEED.fill(0);SEED=null;showSeed();logLine('seed :: CLEARED ON TAB HIDE');}
-    } else{RATE.last=0;SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});sizeRain();}
+    } else{RATE.last=0;SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});sizeRain();sizeSeedRain();}
   });
   window.addEventListener('pagehide',function(){saveState();
     if(SEED){SEED.fill(0);SEED=null;}
+    CHAN.msgs.length=0;
+    ['chKey','chMsg','chBlob'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     EPOOL.forEach(function(P){for(var i=0;i<P.buf.length;i++)P.buf[i]=0;P.buf.length=0;});
     if(MIC.stream)micOff();
   });
@@ -1494,12 +1723,33 @@
   edrip();setInterval(edrip,1000);
   renderSeed();
 
+  // ---- keyed channel ----
+  (function(){
+    if(!chHasCrypto()){
+      document.getElementById('chMeta').textContent='unavailable — needs WebCrypto';
+      ['chEnc','chDec','chUse'].forEach(function(id){document.getElementById(id).disabled=true;});
+      document.getElementById('chFp').innerHTML='<span>WebCrypto (crypto.subtle) is not available here, so the channel is disabled rather than falling back to weaker crypto.</span>';
+      return;}
+    document.getElementById('chUse').addEventListener('click',function(){
+      if(!SEED){logLine('channel :: GENERATE A SEED FIRST','a');return;}
+      document.getElementById('chKey').value=toHex(SEED);chFp();
+      logLine('channel :: KEY SET FROM SEED · SHARE IT OUT OF BAND');});
+    document.getElementById('chKey').addEventListener('input',chFp);
+    document.getElementById('chEnc').addEventListener('click',chEncrypt);
+    document.getElementById('chDec').addEventListener('click',chDecrypt);
+    document.getElementById('chCopy').addEventListener('click',chCopyBlob);
+    document.getElementById('chClear').addEventListener('click',chClear);
+    ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
+    chFp();
+  })();
+
   startSources();
   setInterval(tick,EPOCH_MS);
   setInterval(stepRain,42);
+  setInterval(stepSeedRain,42);
   setInterval(renderData,140);
   setInterval(saveState,10000);
-  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();drawPad();}catch(e){}},150);});
+  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();sizeSeedRain();try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();drawPad();}catch(e){}},150);});
 })();
 </script>
 </body>
