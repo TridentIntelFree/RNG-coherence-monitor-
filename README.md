@@ -70,9 +70,33 @@ blind to:
   inhibition). Its bump vector strength `PVA` answers *does the swarm point
   somewhere?*
 
-Parameters follow the published hemibrain / FlyWire connectome figures; the wiring
-is redrawn from fresh entropy at every boot, because individual flies differ. This
-is a model of that circuit's shape, not fly data.
+### Where the numbers come from
+
+The sizes are measured, not invented:
+
+| structure | value | source |
+|---|---|---|
+| Kenyon cells | 1,917 | hemibrain (Scheffer 2020; Li 2020) |
+| AL glomeruli | 51 | hemibrain |
+| uniglomerular PNs | ~150 | antennal lobe literature |
+| KC claws | 3–10 per cell, mean 6.1 | anatomy; one PN bouton per claw |
+| coding level | 5% (measured range 5–10%) | Lin et al. 2014, enforced by APL |
+| EB wedges → PB glomeruli | 16 → 18 | EPG neurons |
+| FB layers | 9 | central complex anatomy |
+
+Claw count is **drawn per cell** rather than fixed, and deliberately left
+unnormalised — Kenyon cells with more claws really are more responsive.
+
+Two places this is still a sketch, stated plainly. The real mushroom body has
+**15 compartments** (α1–3, α′1–3, β1–2, β′1–2, γ1–5) read by **34 MBONs of 21
+types**; five lobe-level compartments are modelled, with time constants that are a
+plausible ordering rather than measured values. And the *wiring* is random with the
+right statistics, not the actual synapse-level graph — the MaleCNS v1.0 release
+(166,700 neurons, September 2026) makes the real graph available, but it is not
+going into a single HTML file stepping at 1 Hz in a browser tab.
+
+This is a model of the circuit's shape and size, built to measured dimensions. It
+is not fly data.
 
 **It is not an arm.** It is derived from the arms, so feeding it into the coherence
 statistic would manufacture exactly the fake coherence the project's one rule
@@ -86,13 +110,14 @@ The paired differences are not independent across epochs — the MBON depression
 trace and the ring attractor both carry state — so the same Newey–West correction
 the main statistic uses is applied here, with the same one-directional floor.
 
-Read them loosely anyway. Measured against a pure null over 560 independent cold
-boots of 1200 epochs, `Z_fam` crosses |Z|>1.96 about 6.2% of the time and `Z_ring`
-about 5.4%, against a nominal 5% — and the far tail is worse, with |Z|>3 landing
-perhaps 2–3× more often than the nominal 0.27%. The MBON trace's memory runs to
-~220 epochs, past what any practical lag window recovers. These are exploratory
-readouts, not calibrated evidence. Never multiply the two p-values — they share
-an input.
+Read them loosely anyway. Re-measured on the connectome-derived sizes over 500
+independent cold boots of 1200 epochs, **both** readouts cross |Z|>1.96 about **7%**
+of the time against a nominal 5% — roughly 1.4x too often. Widening the
+autocorrelation window does not fix it: tested at 6, 12, 24 and 48 lags, every
+setting lands between 6% and 8%, so the residual is inherent to readouts that carry
+memory across epochs rather than an artefact of the correction. The far tail sits
+near nominal in these runs. These are exploratory readouts, not calibrated evidence.
+Never multiply the two p-values — they share an input.
 
 ### Depth
 

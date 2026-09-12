@@ -389,7 +389,7 @@
       <div class="cell"><div class="k">KC code reuse vs null</div><div class="v" id="fbOvl">–</div></div>
       <div class="cell"><div class="k">Bump angular velocity</div><div class="v" id="fbVel">–</div></div>
     </div>
-    <div class="hint">The same swarm, read by a <span style="color:var(--fly)">Drosophila-shaped circuit</span> instead of a sum: antennal-lobe gain control → 2000 Kenyon cells on random claws → APL winner-take-all → <em>five</em> MBON compartments reading the same code at their own rates (γ fastest, α slowest), a stereotyped lateral horn alongside, and a central complex whose bump rotates, feeds the protocerebral bridge and smears through the fan-shaped body's layers. Every epoch an <span style="color:var(--grn2)">identical twin brain</span> gets matched synthetic noise, so both readouts are <b>paired differences against a live null</b>. This never enters the coherence statistic — it is a second detector, not a source. Both Z's are autocorrelation-corrected but run mildly optimistic (≈6.7% / 5.6% against a nominal 5% on a measured null); treat them as exploratory.</div>
+    <div class="hint">The same swarm, read by a <span style="color:var(--fly)">Drosophila-shaped circuit</span> instead of a sum: antennal-lobe gain control over 51 glomeruli → 1917 Kenyon cells on 3–10 random claws each → APL winner-take-all → <em>five</em> MBON compartments reading the same code at their own rates (γ fastest, α slowest), a stereotyped lateral horn alongside, and a central complex whose bump rotates, feeds the protocerebral bridge and smears through the fan-shaped body's layers. Every epoch an <span style="color:var(--grn2)">identical twin brain</span> gets matched synthetic noise, so both readouts are <b>paired differences against a live null</b>. This never enters the coherence statistic — it is a second detector, not a source. Sizes are the measured hemibrain ones, not round numbers. Both Z's are autocorrelation-corrected but run mildly optimistic against a measured null; treat them as exploratory.</div>
   </div>
 
   <div class="term panel">
@@ -444,7 +444,10 @@
       <p>Solar wind, seismic, barometric, tide, river, air quality, ocean swell, NIST, Hacker News and GitHub update every few minutes — far too slow for a 1 Hz statistic, where they'd just be one frozen value re-counted hundreds of times. So they ride alongside as honest, timestamped context and <em>never</em> touch the coherence number. (Browser-hostile ones flag "may need proxy.")</p>
       <h4>The fly brain — a second way of looking, not a second source</h4>
       <p>The statistic above reads the swarm one way: sum the arms, square it, watch the walk. That is a very specific hypothesis about what coherence would look like — <em>everything leaning the same way at once</em>. A real <em>Drosophila</em> brain solves a different problem with the same kind of input, and it is worth borrowing the shape.</p>
-      <p>Each epoch the fresh arms are injected into a <b>48-glomerulus antennal lobe</b> with divisive gain control, projected onto <b>2000 Kenyon cells</b> through <b>6 random claws</b> each, and squeezed by a single <b>APL</b>-style inhibitory neuron into a <b>~5% sparse code</b> — the mushroom body's random-projection hash. That code drives one <b>MBON</b> through synapses that <em>depress when used and slowly recover</em>: a pattern the brain has seen before lands on weakened synapses and produces <b>low</b> MBON drive. In parallel the same input drives a <b>16-wedge ellipsoid-body ring attractor</b> (local excitation, global inhibition) whose bump sharpness <code>PVA</code> reports how directionally consistent the drive is. Parameters follow the published hemibrain / FlyWire figures; the wiring itself is redrawn from fresh entropy at every boot, because individual flies differ.</p>
+      <p>Each epoch the fresh arms are injected into a <b>51-glomerulus antennal lobe</b> with divisive gain control, projected onto <b>1917 Kenyon cells</b> through <b>3–10 random claws</b> each (mean 6.1), and squeezed by a single <b>APL</b>-style inhibitory neuron into a <b>~5% sparse code</b> — the mushroom body's random-projection hash. That code drives one <b>MBON</b> through synapses that <em>depress when used and slowly recover</em>: a pattern the brain has seen before lands on weakened synapses and produces <b>low</b> MBON drive. In parallel the same input drives a <b>16-wedge ellipsoid-body ring attractor</b> (local excitation, global inhibition) whose bump sharpness <code>PVA</code> reports how directionally consistent the drive is. The wiring itself is redrawn from fresh entropy at every boot, because individual flies differ.</p>
+      <h4>Where the numbers come from</h4>
+      <p>The sizes are measured, not invented. <b>1917</b> Kenyon cells and <b>51</b> antennal-lobe glomeruli are the hemibrain counts, with roughly <b>150</b> uniglomerular PNs carrying those glomeruli forward. Claw count is <b>drawn per cell over 3–10</b> rather than fixed, because that is what the anatomy shows, and it is deliberately left unnormalised — Kenyon cells with more claws really are more responsive. The <b>5–10%</b> coding level enforced by the single GABAergic <b>APL</b> neuron per hemisphere is measured; 5% is used here. The central complex was already right: <b>16</b> ellipsoid-body wedges feeding <b>18</b> protocerebral-bridge glomeruli through EPG neurons, and the fan-shaped body now has its real <b>9</b> layers rather than 8.</p>
+      <p>Two places this is still a sketch, stated plainly. The real mushroom body has <b>15 compartments</b> (&alpha;1&ndash;3, &alpha;&prime;1&ndash;3, &beta;1&ndash;2, &beta;&prime;1&ndash;2, &gamma;1&ndash;5) read by <b>34 MBONs of 21 types</b>; five lobe-level compartments are modelled, and their time constants are a plausible ordering rather than measured per-compartment values. And the <em>wiring</em> is random with the right statistics, not the actual synapse-level graph — the MaleCNS v1.0 release (166,700 neurons, September 2026) makes the real graph available, but it is not going into a single HTML file that steps at 1 Hz in a browser tab. This is a model of the circuit's shape and size, built to measured dimensions. It is not fly data.</p>
       <p>So it answers two questions the sum cannot: <b>has this configuration happened before?</b> (familiarity) and <b>does the swarm point somewhere?</b> (bump coherence).</p>
       <h4>Five compartments, not one memory</h4>
       <p>The mushroom body is not a single memory. It is divided into compartments along the lobes, each with its own MBON and its own rate of synaptic depression, so the same sparse code is read out simultaneously on several timescales. Five are modelled here — <b>γ</b>, <b>β′</b>, <b>β</b>, <b>α′</b>, <b>α</b> — relaxing back toward baseline over roughly <b>36, 69, 138, 278 and 526 seconds</b>. A fast compartment notices that something just repeated; a slow one notices that the last ten minutes were not as fresh as they should have been. The <b>β</b> compartment keeps the exact constants the familiarity statistic was calibrated against, so widening the model leaves that number bit-for-bit unchanged — verified against the old single-compartment model over 1500 epochs.</p>
@@ -454,7 +457,7 @@
       <h4>Why it cannot manufacture coherence</h4>
       <p>Because it is <em>not an arm</em>. It is derived from the arms, so putting it in the statistic would be exactly the mistake the rule below forbids — it is kept strictly outside. And because it is derived, it has no analytic null: a circuit with memory has no clean χ². So every epoch an <b>identical twin brain</b> — same wiring, same parameters, same number of live channels — is fed <em>matched synthetic noise</em>, and both readouts are reported as <b>paired differences against that live null</b>: <code>Z_fam</code> from <code>MBON_null − MBON_signal</code>, <code>Z_ring</code> from <code>PVA_signal − PVA_null</code>. Positive means the real swarm looks more structured than matched noise.</p>
       <p>The paired differences are <em>not</em> independent across epochs — the MBON depression trace and the ring attractor both carry state — so the same Newey–West correction the main statistic uses is applied here too, with the same one-directional floor.</p>
-      <p class="warn">Even so, read these two loosely. Measured against a pure null over 560 independent cold boots of 1200 epochs each, <code>Z_fam</code> crosses |Z|&gt;1.96 about 6.2% of the time and <code>Z_ring</code> about 5.4%, against a nominal 5% — and the far tail runs worse still, with |Z|&gt;3 landing perhaps two to three times more often than the nominal 0.27%, so a large fly-brain Z deserves more suspicion than its p-value suggests — the MBON trace's memory runs to roughly 220 epochs, well past what any practical lag window recovers. So these readouts run mildly optimistic and should be treated as exploratory, not as calibrated evidence. And never multiply the two p-values together: both readouts share the same input, so they are correlated by construction.</p>
+      <p class="warn">Even so, read these two loosely. Re-measured on the new sizes over 500 independent cold boots of 1200 epochs, <b>both</b> readouts cross |Z|&gt;1.96 about <b>7%</b> of the time against a nominal 5% — roughly 1.4× too often. Widening the autocorrelation window does not fix it: tested at 6, 12, 24 and 48 lags, every setting lands between 6% and 8%, so the residual is inherent to readouts that carry memory from one epoch to the next, not an artefact of the correction. The far tail sits near nominal in these runs. Treat both as <em>exploratory</em>, not as calibrated evidence, and never multiply the two p-values together: both readouts share the same input, so they are correlated by construction.</p>
       <h4>The seed extractor</h4>
       <p>The swarm is a pile of entropy sources, so it can do one genuinely useful thing besides watching itself: hand you a seed. Press <b>Generate</b> and every enabled layer is folded through <code>HKDF-SHA-256</code> (RFC 5869) into 128, 256 or 512 bits, on your device, with no network call and no storage.</p>
       <p><b>The safety argument is the whole design.</b> <code>crypto.getRandomValues()</code> is always in the input <em>and</em> supplies the salt, and it cannot be switched off. So extra layers can only ever add; they can never subtract. Even if every other source were fully known to an attacker — pinned to a constant, say — the output is still exactly as strong as your CSPRNG alone. That property is tested: with six of the seven layers held at a fixed byte, 400 extractions are all distinct and statistically indistinguishable from pure CSPRNG output.</p>
@@ -679,7 +682,19 @@
      Wiring is redrawn from fresh entropy at every boot: individual flies differ.
      ────────────────────────────────────────────────────────────────────────── */
   var FLYC='#c08bff';
-  var FB={NPN:48,NKC:2000,CLAW:6,SPARSE:.05,NW:16,NPB:18,NLH:8,NFBL:8,
+  /* Sizes are the measured ones, not round numbers.
+       1917 Kenyon cells, 51 antennal-lobe glomeruli, ~150 uniglomerular PNs
+            (hemibrain: Scheffer et al. 2020 eLife; Li et al. 2020 eLife, the MB connectome)
+       3-10 dendritic claws per KC, ~6 typical, one PN bouton per claw, each bouton
+            wrapped by ~21 claws -- so claw count is drawn per cell rather than fixed
+       5-10% coding level, enforced by the one GABAergic APL neuron per hemisphere
+            (Lin et al. 2014, Nature Neuroscience)
+       16 ellipsoid-body wedges -> 18 protocerebral-bridge glomeruli, via EPG neurons
+       9 fan-shaped body layers
+     The MB's 15 compartments (a1-3, a'1-3, b1-2, b'1-2, g1-5) are read by 34 MBONs of
+     21 types. Five lobe-level compartments are modelled below; their time constants are
+     a plausible ordering, NOT measured per-compartment values. */
+  var FB={NPN:51,NKC:1917,SPARSE:.05,NW:16,NPB:18,NLH:8,NFBL:9,
     DEP:.055,REC:.0045,TRACE:150};
   FB.K=Math.max(1,Math.round(FB.NKC*FB.SPARSE));
   /* The mushroom body is not one memory — it is ~15 compartments along the
@@ -701,8 +716,20 @@
   FB.fbA=[];for(var _l=0;_l<FB.NFBL;_l++)FB.fbA.push(0.55/Math.pow(1.85,_l));
   var FBS={N:0,fam:hacInit({}),ring:hacInit({}),famZ:0,ringZ:0,famVif:1,ringVif:1};
 
-  function fbWire(seed){var r=mkSplitmix32(seed),cl=new Int16Array(FB.NKC*FB.CLAW);
-    for(var j=0;j<FB.NKC;j++){var seen={};for(var c=0;c<FB.CLAW;c++){var g;do{g=(r()*FB.NPN)|0;}while(seen[g]);seen[g]=1;cl[j*FB.CLAW+c]=g;}}
+  // P(claws = 3..10), peaked near six as the anatomy reports. Left unnormalised by claw
+  // count on purpose: KCs with more claws really are more responsive.
+  var CLAWP=[.05,.12,.20,.25,.18,.11,.06,.03];
+  function fbWire(seed){
+    var r=mkSplitmix32(seed),off=new Int32Array(FB.NKC+1),tot=0,j,c,i,u,acc,n,g,seen;
+    for(j=0;j<FB.NKC;j++){
+      u=r();acc=0;n=10;
+      for(i=0;i<CLAWP.length;i++){acc+=CLAWP[i];if(u<acc){n=3+i;break;}}
+      off[j]=tot;tot+=n;}
+    off[FB.NKC]=tot;
+    var cl=new Int16Array(tot);
+    for(j=0;j<FB.NKC;j++){seen={};
+      for(c=off[j];c<off[j+1];c++){do{g=(r()*FB.NPN)|0;}while(seen[g]);seen[g]=1;cl[c]=g;}}
+    FB.clawOff=off;FB.clawMean=tot/FB.NKC;
     return cl;}
   function fbMap(seed){var r=mkSplitmix32(seed),m={};
     SRC.forEach(function(s){if(s.tier==='context')return;
@@ -745,7 +772,7 @@
     B.head=Math.atan2(sy,sx);}
 
   function fbStep(B,drv,rdrv){
-    var NPN=FB.NPN,NKC=FB.NKC,CLAW=FB.CLAW,cl=FB.wire,pn=B.pn,kc=B.kc,i,j,c,a,b;
+    var NPN=FB.NPN,NKC=FB.NKC,cl=FB.wire,off=FB.clawOff,pn=B.pn,kc=B.kc,i,j,c,a;
     var s2=0;for(i=0;i<NPN;i++)s2+=drv[i]*drv[i];                // AL divisive normalization
     var g=1/Math.sqrt(1+s2/NPN);
     for(i=0;i<NPN;i++)pn[i]=drv[i]*g;
@@ -756,7 +783,7 @@
     var lg=1/Math.sqrt(1+ls/FB.NLH);
     for(k=0;k<FB.NLH;k++)B.lh[k]*=lg;
 
-    for(j=0;j<NKC;j++){a=0;b=j*CLAW;for(c=0;c<CLAW;c++)a+=pn[cl[b+c]];kc[j]=a;}
+    for(j=0;j<NKC;j++){a=0;for(c=off[j];c<off[j+1];c++)a+=pn[cl[c]];kc[j]=a;}
     var srt=Array.prototype.slice.call(kc);srt.sort(function(p,q){return q-p;});
     var thr=srt[FB.K-1],act=[];                                   // APL k-winner-take-all
     for(j=0;j<NKC&&act.length<FB.K;j++)if(kc[j]>=thr)act.push(j);
@@ -1050,7 +1077,7 @@
 
     x.font='8.5px monospace';x.textBaseline='alphabetic';
     // ---- antennal lobe: 48 glomeruli ----
-    x.fillStyle='rgba(35,107,58,1)';x.fillText('ANTENNAL LOBE · '+FB.NPN+' glomeruli',pad,alY-4);
+    x.fillStyle='rgba(35,107,58,1)';x.fillText('ANTENNAL LOBE · '+FB.NPN+' glomeruli · ~150 uPNs',pad,alY-4);
     bw=(W-pad*2)/FB.NPN;
     for(i=0;i<FB.NPN;i++){
       var v=Math.max(-3,Math.min(3,DSP.pn[i]))/3;
@@ -1063,7 +1090,7 @@
     // ---- KC raster ----
     var kw=W-pad*2;
     x.fillStyle='rgba(35,107,58,1)';
-    x.fillText('KENYON CELLS · '+FB.NKC+' · APL k-WTA → '+FB.sig.act.length+' active ('+(100*FB.SPARSE).toFixed(0)+'%)',pad,kcY-5);
+    x.fillText('KENYON CELLS · '+FB.NKC+' · '+FB.clawMean.toFixed(1)+' claws avg · APL → '+FB.sig.act.length+' ('+(100*FB.SPARSE).toFixed(0)+'%)',pad,kcY-5);
     x.fillStyle='rgba(0,255,102,.045)';x.fillRect(pad,kcY,kw,kcH);
     var kc=kcCanvas(Math.max(8,Math.round(kw)),Math.max(8,kcH));
     if(kc._dirty){kcPaint(kc.width,kc.height);kc._dirty=false;}
@@ -1404,7 +1431,9 @@
         detectorMinusControl:(PHYS.N>=60&&ALGO.N>=60)?(function(){var d=(Sp.z-Sa.z)/Math.SQRT2;return {Z:d,p:fmtP(d)};})():null},
       flyBrain:{note:'paired differences against a matched-noise twin brain; not part of the statistic above',
         N:FBS.N,familiarityZ:FBS.famZ,familiarityVif:FBS.famVif,ringZ:FBS.ringZ,ringVif:FBS.ringVif,
-        KC:FB.NKC,claws:FB.CLAW,codingLevel:FB.SPARSE,wedges:FB.NW},
+        KC:FB.NKC,clawsMean:FB.clawMean,glomeruli:FB.NPN,codingLevel:FB.SPARSE,
+        wedges:FB.NW,bridgeGlomeruli:FB.NPB,fbLayers:FB.NFBL,
+        sizesFrom:'hemibrain (Scheffer 2020; Li 2020); coding level Lin 2014'},
       arms:SRC.filter(function(s){return s.tier!=='context';}).map(function(s){
         var g=armDiag(s);
         return {id:s.id,label:s.label,tier:s.tier,type:s.type,status:s.status,
@@ -1986,7 +2015,7 @@
   logLine('synchronicity_machine :: BOOT');
   if(resumedN)logLine('session :: RESUMED N='+resumedN+' \u00b7 RUNNING SUMS RESTORED');
   else logLine('entropy swarm :: SEEDED');
-  logLine('fly.brain :: CONNECTOME WIRED '+FB.NKC+' KC \u00d7 '+FB.CLAW+' claws');
+  logLine('fly.brain :: CONNECTOME WIRED '+FB.NKC+' KC \u00d7 '+FB.clawMean.toFixed(1)+' claws \u00b7 '+FB.NPN+' glomeruli');
 
   document.getElementById('motionBtn').addEventListener('click',enableMotion);
   document.getElementById('btnPause').addEventListener('click',function(){setPaused(!RATE.paused);});
