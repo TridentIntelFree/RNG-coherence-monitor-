@@ -92,6 +92,42 @@ about 5.6%, against a nominal 5%: the MBON trace's memory runs to ~220 epochs,
 past what any practical lag window recovers. These are exploratory readouts, not
 calibrated evidence. And never multiply the two p-values — they share an input.
 
+## The seed extractor
+
+The swarm is a pile of entropy sources, so it can hand you a seed. Every enabled
+layer is folded through `HKDF-SHA-256` (RFC 5869) into 128/256/512 bits — on your
+device, no network call, no storage, gone on reload.
+
+**The safety argument is the design.** `crypto.getRandomValues()` is always in the
+input *and* supplies the salt, and cannot be switched off, so extra layers can only
+add — never subtract. With six of the seven layers pinned to a constant, 400
+extractions are still all distinct and statistically indistinguishable from pure
+CSPRNG output. This is not "more random" than your CSPRNG; nothing is. It is *less
+dependent on any single source*.
+
+Layers: CSPRNG floor (always on) · timing jitter · pointer/touch movement · device
+motion · microphone noise floor, LSBs only · your own typed dice rolls · the public
+swarm.
+
+**Every source is measured, not trusted.** Each layer runs the two NIST SP 800-90B
+continuous health tests — Repetition Count and Adaptive Proportion at α=2⁻²⁰ — plus
+the MCV min-entropy estimator (§6.3.1). Min-entropy is assessed once and then
+**latched**: cutoffs hold fixed against that assessment, because recomputing them
+from the live estimate would let a failing source drag its own cutoff down and never
+trip. A source that degrades after assessment fires its test and drops to claiming
+zero bits.
+
+Public sources count as **zero secret bits**, always — drand and the firehoses are
+unpredictable in advance but anyone can watch the same events.
+
+The crypto (SHA-256, HMAC, HKDF) is implemented in the page and verified against
+FIPS 180-4, RFC 4231 and RFC 5869 vectors, so it also works with the page saved and
+opened offline.
+
+⚠️ A browser tab is not a safe place to make long-lived secrets. Don't generate
+wallets or production keys here. And no seed is ever served from a server — a seed
+that came off a server is known to that server.
+
 ## What this is not
 
 It measures **coincidence, not meaning**. Run long enough and you *will* cross

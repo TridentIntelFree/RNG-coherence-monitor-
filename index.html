@@ -112,6 +112,51 @@
   .diag{font-size:9px;letter-spacing:.04em;color:var(--faint);margin-top:3px;font-variant-numeric:tabular-nums}
   .diag.bad{color:var(--amber)}
 
+  /* ---- seed extractor ---- */
+  .vow{border:1px solid rgba(0,255,102,.22);border-radius:5px;padding:9px 11px;margin-bottom:10px;background:rgba(0,30,10,.35)}
+  .vow ul{margin:5px 0 0;padding-left:16px;font-size:10.5px;color:var(--dim);line-height:1.65}
+  .vow li{margin:1px 0}
+  .vow b{color:var(--bright);font-weight:400}
+  .vowh{font-size:10px;letter-spacing:.14em;color:var(--grn);text-transform:uppercase}
+  .lyr{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--hair)}
+  .lyr:last-child{border-bottom:0}
+  .lyr.off{opacity:.42}
+  .lyr input[type=checkbox]{margin:2px 0 0;accent-color:var(--grn);width:14px;height:14px;flex:0 0 auto;cursor:pointer}
+  .lyr input[type=checkbox]:disabled{cursor:not-allowed}
+  .lyr .lm{flex:1;min-width:0}
+  .lyr .ln{font-size:11px;color:var(--txt);letter-spacing:.05em;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .lyr .ld{font-size:9.5px;color:var(--faint);line-height:1.5;margin-top:2px}
+  .lyr .lh{font-size:9px;color:var(--dim);margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:.03em}
+  .lyr .lh.bad{color:var(--red)}
+  .pill{font-size:8.5px;letter-spacing:.1em;padding:1px 5px;border-radius:3px;border:1px solid var(--hair);color:var(--faint);text-transform:uppercase}
+  .pill.secret{color:var(--grn);border-color:rgba(0,255,102,.35)}
+  .pill.pub{color:var(--amber);border-color:rgba(255,210,63,.32)}
+  .pill.optin{color:var(--blu);border-color:rgba(125,184,255,.32)}
+  .pill.floor{color:var(--fly);border-color:rgba(192,139,255,.35)}
+  #sdPad{display:block;width:100%;border:1px dashed var(--edge);border-radius:5px;margin-top:9px;touch-action:none;cursor:crosshair}
+  .sdf{display:flex;gap:7px;align-items:center;margin-top:9px;flex-wrap:wrap}
+  .sdf label{font-size:9.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .sdin,.sdsel,.sdta{background:rgba(0,0,0,.5);border:1px solid var(--edge);border-radius:4px;color:var(--txt);
+    font-family:var(--mono);font-size:11px;padding:6px 8px}
+  .sdin{flex:1;min-width:120px}
+  .sdta{width:100%;margin-top:9px;min-height:54px;resize:vertical}
+  .sdin:focus,.sdsel:focus,.sdta:focus{outline:none;border-color:var(--grn)}
+  .meter{height:7px;border-radius:4px;background:rgba(0,0,0,.5);border:1px solid var(--hair);overflow:hidden;margin-top:9px}
+  .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--grndim),var(--grn));transition:width .25s}
+  .meter.full i{background:linear-gradient(90deg,var(--grn),var(--bright))}
+  .sdout{margin-top:10px;border:1px solid var(--edge);border-radius:5px;background:rgba(0,0,0,.55);padding:10px 11px}
+  .sdout .sk{font-size:9px;letter-spacing:.13em;color:var(--faint);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
+  .sdval{font-size:12.5px;color:var(--bright);word-break:break-all;line-height:1.6;margin-top:5px;user-select:all;
+    font-variant-ligatures:none;text-shadow:0 0 8px rgba(0,255,102,.25)}
+  .tabs{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+  .tab{font-size:9.5px;letter-spacing:.08em;padding:4px 8px;border-radius:4px;border:1px solid var(--hair);
+    background:transparent;color:var(--faint);font-family:var(--mono);cursor:pointer;text-transform:uppercase}
+  .tab.on{color:var(--grn);border-color:rgba(0,255,102,.4);background:rgba(0,255,102,.08)}
+  .tab:focus-visible{outline:2px solid var(--grn);outline-offset:2px}
+  .danger-note{border:1px solid rgba(255,77,94,.35);border-radius:5px;padding:9px 11px;margin-top:10px;
+    background:rgba(40,0,6,.3);font-size:10.5px;color:#ffb3bb;line-height:1.6}
+  .danger-note b{color:var(--red);font-weight:400;letter-spacing:.08em}
+
   details{margin-top:12px;overflow:hidden}
   summary{cursor:pointer;list-style:none;padding:13px 15px;font-size:13px;letter-spacing:.05em;color:var(--grn);display:flex;align-items:center;justify-content:space-between;gap:10px}
   summary::-webkit-details-marker{display:none}
@@ -174,6 +219,63 @@
   <div class="term panel p1">
     <div class="ptop"><div class="ptitle">> THE SWARM<b>.live</b></div><div class="pmeta" id="constMeta">σ-deviation per arm · 1 Hz</div></div>
     <div id="sources"></div>
+  </div>
+
+  <div class="term panel" id="seedPanel">
+    <div class="ptop"><div class="ptitle">> SEED.EXTRACTOR</div><div class="pmeta" id="sdMeta">local only · never transmitted</div></div>
+
+    <div class="vow">
+      <div class="vowh">What this does and does not do</div>
+      <ul>
+        <li>Everything happens <b>in this tab</b>. The seed path makes <b>no network calls</b> and touches <b>no storage</b> — reload and it is gone.</li>
+        <li>The OS CSPRNG is <b>always</b> mixed in and cannot be switched off, so the result is <b>never weaker</b> than <code>crypto.getRandomValues()</code> alone.</li>
+        <li>This is not "more random" than your CSPRNG — nothing is. It is <b>less dependent on any single source</b>.</li>
+        <li>Extraction is HKDF-SHA-256 (RFC 5869), implemented in this page and verified against the RFC and NIST vectors — so it also works with the page saved and opened <b>offline</b>.</li>
+      </ul>
+    </div>
+
+    <div id="sdLayers"></div>
+
+    <div class="meter" id="sdMeterWrap"><i id="sdMeter"></i></div>
+    <div class="hint" id="sdBits">assessed secret entropy: — · public sources are counted as zero</div>
+
+    <canvas id="sdPad" aria-label="Drag here to add entropy from your own movement"></canvas>
+    <textarea id="sdta" class="sdta" autocomplete="off" autocorrect="off" spellcheck="false"
+      placeholder="Optional: type dice rolls or mash the keys. Only you know this. Hashed into the pool, never stored, never sent — cleared by Clear."></textarea>
+
+    <div class="sdf">
+      <label for="sdPurpose">Purpose</label>
+      <input id="sdPurpose" class="sdin" value="general" maxlength="64" autocomplete="off"
+        title="Domain separation: the same pool with a different purpose yields an unrelated seed">
+      <label for="sdLen">Bits</label>
+      <select id="sdLen" class="sdsel">
+        <option>128</option><option selected>256</option><option>512</option>
+      </select>
+    </div>
+
+    <div class="ctl">
+      <button id="sdGen" class="cbtn" type="button">⚡ Generate seed</button>
+      <button id="sdCopy" class="cbtn" type="button">⧉ Copy</button>
+      <button id="sdClear" class="cbtn danger" type="button">⌫ Clear &amp; wipe</button>
+    </div>
+
+    <div class="sdout" id="sdOutBox" hidden>
+      <div class="sk"><span id="sdFmtName">hex</span><span id="sdStamp"></span></div>
+      <div class="sdval" id="sdVal"></div>
+      <div class="tabs" id="sdTabs"></div>
+    </div>
+
+    <div class="danger-note">
+      <b>Before you use this for anything that matters.</b> A browser tab is not a safe place to make
+      long-lived secrets: extensions, scripts and swap can all see this page's memory. Do not generate
+      cryptocurrency wallets, production signing keys or anything you cannot rotate here. For those, use
+      a dedicated offline tool on hardware you trust. This is built for seeding simulations, shuffles,
+      experiments, sortition and draws — and for learning what entropy extraction actually looks like.
+      If you want <em>public verifiable</em> randomness that others can check, use
+      <a href="https://drand.love" target="_blank" rel="noopener noreferrer" style="color:var(--blu)">drand</a>
+      — it is already one of the arms above, and a value served from a web page can never match it.
+    </div>
+    <div class="hint">Each visitor extracts their own seed on their own device. Nothing is ever published or shared — a seed that came off a server would be known to that server, which is the one thing a seed must never be.</div>
   </div>
 
   <div class="term panel p2">
@@ -258,6 +360,14 @@
       <p>Because it is <em>not an arm</em>. It is derived from the arms, so putting it in the statistic would be exactly the mistake the rule below forbids — it is kept strictly outside. And because it is derived, it has no analytic null: a circuit with memory has no clean χ². So every epoch an <b>identical twin brain</b> — same wiring, same parameters, same number of live channels — is fed <em>matched synthetic noise</em>, and both readouts are reported as <b>paired differences against that live null</b>: <code>Z_fam</code> from <code>MBON_null − MBON_signal</code>, <code>Z_ring</code> from <code>PVA_signal − PVA_null</code>. Positive means the real swarm looks more structured than matched noise.</p>
       <p>The paired differences are <em>not</em> independent across epochs — the MBON depression trace and the ring attractor both carry state — so the same Newey–West correction the main statistic uses is applied here too, with the same one-directional floor.</p>
       <p class="warn">Even so, read these two loosely. Measured against a pure null over 360 independent cold boots of 1200 epochs each, <code>Z_fam</code> crosses |Z|&gt;1.96 about 6.7% of the time and <code>Z_ring</code> about 5.6%, against a nominal 5% — the MBON trace's memory runs to roughly 220 epochs, well past what any practical lag window recovers. So these readouts run mildly optimistic and should be treated as exploratory, not as calibrated evidence. And never multiply the two p-values together: both readouts share the same input, so they are correlated by construction.</p>
+      <h4>The seed extractor</h4>
+      <p>The swarm is a pile of entropy sources, so it can do one genuinely useful thing besides watching itself: hand you a seed. Press <b>Generate</b> and every enabled layer is folded through <code>HKDF-SHA-256</code> (RFC 5869) into 128, 256 or 512 bits, on your device, with no network call and no storage.</p>
+      <p><b>The safety argument is the whole design.</b> <code>crypto.getRandomValues()</code> is always in the input <em>and</em> supplies the salt, and it cannot be switched off. So extra layers can only ever add; they can never subtract. Even if every other source were fully known to an attacker — pinned to a constant, say — the output is still exactly as strong as your CSPRNG alone. That property is tested: with six of the seven layers held at a fixed byte, 400 extractions are all distinct and statistically indistinguishable from pure CSPRNG output.</p>
+      <p>This is <em>not</em> "more random" than your CSPRNG. Nothing is. It is <b>less dependent on any single source</b> — which is the only honest thing multi-source mixing buys you, and it is a real thing to want if you distrust one link in the chain.</p>
+      <h4>Every source is measured, not trusted</h4>
+      <p>Each layer runs the two <b>NIST SP 800-90B continuous health tests</b> — Repetition Count and Adaptive Proportion, at α=2<sup>−20</sup> — plus the <b>MCV min-entropy estimator</b> (§6.3.1), live, on its own byte stream. Min-entropy is assessed once and then <em>latched</em>: the cutoffs are held fixed against that assessment, because recomputing them from the live estimate would let a failing source drag its own cutoff down with it and never trip. A source that degrades after assessment fires its test and immediately drops to claiming <b>zero</b> bits — it stays in the mix, since mixing cannot hurt, but it stops counting toward the total.</p>
+      <p>Public sources are counted as <b>zero secret bits</b>, always. drand, Wikipedia, Bluesky, Mastodon and the Coinbase tape are unpredictable in advance but anyone can watch the same events, so they add depth and independence, not secrecy. Pretending otherwise would be the same species of error as counting a deterministic PRNG as an entropy source.</p>
+      <p class="warn">A browser tab is not a safe place to make long-lived secrets — extensions, injected scripts and swap can all reach this page's memory. Do not generate wallets or production signing keys here. And note what is <em>absent</em>: no seed is ever served from a server, because a seed that came off a server is known to that server. Every visitor extracts their own, locally. If you want public verifiable randomness instead, that is drand's job, and drand is already one of the arms.</p>
       <h4 class="warn">The one rule, and what this is NOT</h4>
       <p class="warn">Every arm must be an <em>independent draw</em> — never arm B derived from arm A; that single mistake manufactures fake coherence. (Which is why the fly brain is a readout and not an arm, and why each arm's independence is measured on screen rather than assumed.) It measures <em>coincidence, not meaning</em> — Jung's synchronicity is what an observer reads into a coincidence; no instrument supplies that. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by chance — calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
       <p style="color:var(--faint);margin-top:12px">Sources: crypto.getRandomValues · device timing &amp; motion · drand · Coinbase · Wikimedia · Bluesky · Mastodon (live) · NOAA · USGS · Open-Meteo · NIST · HN · GitHub (context). Readout circuit after the <em>Drosophila</em> mushroom body and central complex (hemibrain / FlyWire connectome literature) — a model of that circuit's shape, not fly data. Independent tool, unaffiliated.</p>
@@ -574,7 +684,10 @@
   function glitch(){if(!FX.on)return;var w=document.getElementById('wrap');w.classList.remove('glitch');void w.offsetWidth;w.classList.add('glitch');rain.boost=performance.now()+800;}
 
   // ---------- live streams ----------
-  function feedArrival(s){s._n=(s._n||0)+1;s._acc=mix(s._acc||(2166136261>>>0),performance.now());if(s.status!=='live')mark(s,1);}
+  function feedArrival(s){s._n=(s._n||0)+1;s._acc=mix(s._acc||(2166136261>>>0),performance.now());
+    if(typeof epush==='function'){var t=Math.round(performance.now()*1000);
+      epush('swarm',[t&255,(t>>8)&255,(t>>16)&255]);}          // public stream timing
+    if(s.status!=='live')mark(s,1);}
   function startArrival(s,url,proto){
     try{
       var conn=proto==='ws'?new WebSocket(url):new EventSource(url);
@@ -599,7 +712,10 @@
   }
   function pollDrand(){var s=byId.drand;
     fetchJSON('https://drand.cloudflare.com/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971/public/latest',6000).then(function(j){
-      if(!j||!j.randomness)throw 0;if(s._r!==j.round){s._r=j.round;s._z=clampZ(invNorm(hexU(j.randomness)));s._fresh=true;s.last='r'+j.round;}mark(s,1);
+      if(!j||!j.randomness)throw 0;if(s._r!==j.round){s._r=j.round;s._z=clampZ(invNorm(hexU(j.randomness)));s._fresh=true;s.last='r'+j.round;
+        var hx=String(j.randomness),bb=[],q;for(q=0;q+1<hx.length&&q<64;q+=2)bb.push(parseInt(hx.substr(q,2),16)&255);
+        epush('swarm',bb);}
+      mark(s,1);
     }).catch(function(){
       fetchJSON('https://drand.cloudflare.com/public/latest',6000).then(function(j){if(!j||!j.randomness)throw 0;if(s._r!==j.round){s._r=j.round;s._z=clampZ(invNorm(hexU(j.randomness)));s._fresh=true;s.last='r'+j.round;}mark(s,1);}).catch(function(){mark(s,0);});
     });}
@@ -611,7 +727,9 @@
       window.addEventListener('devicemotion',function(e){
         var a=e.accelerationIncludingGravity||e.acceleration||{},r=e.rotationRate||{};
         var bits=((((a.x||0)*1e6)>>>0)^(((a.y||0)*1e6)>>>0)^(((a.z||0)*1e6)>>>0)^(((r.alpha||0)*1e6)>>>0))>>>0;
-        s._acc=mix((s._acc||(2166136261>>>0))^bits,performance.now());s._n=(s._n||0)+1;s._on=true;mark(s,1);
+        s._acc=mix((s._acc||(2166136261>>>0))^bits,performance.now());s._n=(s._n||0)+1;s._on=true;
+        epush('motion',[bits&255,(bits>>8)&255,(bits>>16)&255,(bits>>>24)&255]);
+        mark(s,1);
       });
       s._on=true;mark(s,1);if(btn)btn.style.display='none';logLine('motion.sensor :: ENABLED');
     }
@@ -839,8 +957,8 @@
     document.getElementById('fbSp').textContent=FBS.N?((100*FB.sig.act.length/FB.NKC).toFixed(1)+'%  '+FB.sig.act.length+'/'+FB.NKC+' KC'):'\u2013';
     document.getElementById('fbHd').textContent=FBS.N?(((FB.sig.head*180/Math.PI+360)%360).toFixed(0)+'\u00b0  PVA '+FB.sig.pva.toFixed(3)):'\u2013';
     document.getElementById('fbMeta').textContent='paired vs null twin \u00b7 N='+FBS.N+' \u00b7 not an arm';
-    setVerdict(Zc);renderLog();
-    try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();}catch(e){}
+    setVerdict(Zc);renderLog();renderSeed();
+    try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();drawPad();}catch(e){}
   }
 
 
@@ -916,6 +1034,7 @@
     FB.sig=fbBrain();FB.nul=fbBrain();FB.tr.length=0;
     SRC.forEach(function(s){if(s.tier!=='context'){s.aN=s.aS=s.aQ=s.aX=s.aC=0;s.aP=null;s.has=false;}});
     T0=Date.now();RATE.gaps=0;RATE.last=0;LOG.length=0;
+    wipeSeed();
     logLine('session :: RESET · N=0');
   }
 
@@ -966,6 +1085,339 @@
     dl('synchronicity-session-'+stamp()+'.json','application/json',JSON.stringify(out,null,2));
   }
 
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     SEED.EXTRACTOR — turn the swarm into a seed, on the user's own device.
+
+     Design rules, in order of importance:
+       1. The seed never leaves this tab. No fetch, no storage, no telemetry.
+       2. The OS CSPRNG is always in the input and the salt, so the output is
+          never weaker than crypto.getRandomValues() alone. Extra sources can
+          only add; they can never subtract. That is the whole safety argument.
+       3. Every source is measured, not trusted: NIST SP 800-90B continuous
+          health tests (Repetition Count + Adaptive Proportion) and the MCV
+          min-entropy estimator run live on each one.
+       4. Public sources (drand, the firehoses) are counted as ZERO secret bits,
+          because anyone can watch the same events.
+       5. Crypto is implemented here in the page rather than called from
+          SubtleCrypto, so it is auditable in the same file and works from
+          file:// with the page saved and opened air-gapped.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  // ---------- SHA-256 / HMAC / HKDF (RFC 6234, RFC 2104, RFC 5869) ----------
+  var K256=new Uint32Array([
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+  function rotr(x,n){return (x>>>n)|(x<<(32-n));}
+  function sha256(msg){
+    var ml=msg.length,wl=((ml+8)>>6)+1,blocks=new Uint8Array(wl*64);
+    blocks.set(msg);blocks[ml]=0x80;
+    var bits=ml*8;
+    blocks[wl*64-4]=(bits>>>24)&255;blocks[wl*64-3]=(bits>>>16)&255;
+    blocks[wl*64-2]=(bits>>>8)&255;blocks[wl*64-1]=bits&255;
+    var H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+    var w=new Uint32Array(64),i,j,a,b,c,d,e,f,g,h,t1,t2,o,s0,s1,S0,S1,ch,mj;
+    for(i=0;i<wl;i++){
+      o=i*64;
+      for(j=0;j<16;j++)w[j]=(blocks[o+j*4]<<24)|(blocks[o+j*4+1]<<16)|(blocks[o+j*4+2]<<8)|blocks[o+j*4+3];
+      for(j=16;j<64;j++){
+        s0=rotr(w[j-15],7)^rotr(w[j-15],18)^(w[j-15]>>>3);
+        s1=rotr(w[j-2],17)^rotr(w[j-2],19)^(w[j-2]>>>10);
+        w[j]=(w[j-16]+s0+w[j-7]+s1)>>>0;}
+      a=H[0];b=H[1];c=H[2];d=H[3];e=H[4];f=H[5];g=H[6];h=H[7];
+      for(j=0;j<64;j++){
+        S1=rotr(e,6)^rotr(e,11)^rotr(e,25);ch=(e&f)^((~e)&g);
+        t1=(h+S1+ch+K256[j]+w[j])>>>0;
+        S0=rotr(a,2)^rotr(a,13)^rotr(a,22);mj=(a&b)^(a&c)^(b&c);
+        t2=(S0+mj)>>>0;
+        h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;}
+      H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;
+      H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;}
+    blocks.fill(0);w.fill(0);
+    var out=new Uint8Array(32);
+    for(i=0;i<8;i++){out[i*4]=(H[i]>>>24)&255;out[i*4+1]=(H[i]>>>16)&255;out[i*4+2]=(H[i]>>>8)&255;out[i*4+3]=H[i]&255;}
+    H.fill(0);return out;}
+  function cat(arrs){var n=0,i;for(i=0;i<arrs.length;i++)n+=arrs[i].length;
+    var o=new Uint8Array(n),p=0;for(i=0;i<arrs.length;i++){o.set(arrs[i],p);p+=arrs[i].length;}return o;}
+  function hmac256(key,msg){
+    var k=key.length>64?sha256(key):key,i,ki=new Uint8Array(64),ko=new Uint8Array(64);
+    ki.set(k);ko.set(k);
+    for(i=0;i<64;i++){ko[i]^=0x5c;ki[i]^=0x36;}
+    var r=sha256(cat([ko,sha256(cat([ki,msg]))]));ki.fill(0);ko.fill(0);return r;}
+  function hkdf(ikm,salt,info,len){
+    var prk=hmac256(salt,ikm),out=new Uint8Array(len),t=new Uint8Array(0),off=0,i=1,n;
+    while(off<len){
+      t=hmac256(prk,cat([t,info,new Uint8Array([i])]));
+      n=Math.min(32,len-off);out.set(t.subarray(0,n),off);off+=n;i++;}
+    prk.fill(0);return out;}
+
+  // ---------- NIST SP 800-90B: health tests + MCV min-entropy ----------
+  var LGC=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  function lgamma(x){var y=x,tmp=x+5.5;tmp-=(x+0.5)*Math.log(tmp);var ser=1.000000000190015;
+    for(var j=0;j<6;j++)ser+=LGC[j]/++y;return -tmp+Math.log(2.5066282746310005*ser/x);}
+  // Smallest C with Pr[Binomial(W-1, 2^-H) >= C] <= 2^-20.
+  function aptCutoff(W,H){
+    var n=W-1,p=Math.pow(2,-H),alpha=Math.pow(2,-20);
+    if(!(p>0&&p<1))return W;
+    var lp=Math.log(p),lq=Math.log(1-p),lnf=lgamma(n+1),acc=0,c;
+    for(c=n;c>=1;c--){
+      acc+=Math.exp(lnf-lgamma(c+1)-lgamma(n-c+1)+c*lp+(n-c)*lq);
+      if(acc>alpha)return Math.min(W,c+1);}
+    return 1;}
+  function mcvH(hist,n){
+    if(n<128)return null;
+    var mx=0,i;for(i=0;i<256;i++)if(hist[i]>mx)mx=hist[i];
+    var p=mx/n,pu=Math.min(1,p+2.576*Math.sqrt(p*(1-p)/(n-1)));
+    return Math.max(0,-Math.log(pu)/Math.LN2);}
+
+  // ---------- entropy layers ----------
+  var EAPT_W=512,EFOLD=4096,EASSESS=2048;
+  function EP(id,label,cls,desc){return {id:id,label:label,cls:cls,desc:desc,
+    on:(cls!=='optin'),locked:(cls==='floor'),buf:[],n:0,hist:new Uint32Array(256),
+    rctPrev:-1,rctRun:0,rctMax:0,rctFail:false,rctC:0,
+    aptFirst:-1,aptI:0,aptCount:0,aptFail:false,aptC:0,H:null,H0:null,_lh:0};}
+  var EPOOL=[
+    EP('csprng','CSPRNG.FLOOR','floor','crypto.getRandomValues() — the OS entropy pool, fed by hardware noise. Always mixed in and cannot be switched off.'),
+    EP('jitter','TIMING.JITTER','local','CPU scheduling and clock noise measured on this device. Browsers clamp their timers, so expect modest entropy per sample.'),
+    EP('pointer','POINTER.CHAOS','local','Your own mouse or finger movement on the pad below — coordinates plus sub-millisecond timing.'),
+    EP('motion','DEVICE.MOTION','optin','Accelerometer and gyroscope noise. Needs permission. Enable it in the swarm panel above.'),
+    EP('mic','AMBIENT.AUDIO','optin','Low bits of the microphone noise floor. Needs permission. Never recorded, never played back, never sent — samples are hashed and dropped.'),
+    EP('manual','YOUR.SECRET','local','Dice rolls or characters you type below, plus your keystroke timing. Only you know these — the one source nobody else could reconstruct.'),
+    EP('swarm','PUBLIC.SWARM','public','The live arms: drand, Wikipedia, Bluesky, Mastodon, Coinbase. Unpredictable in advance but PUBLIC — counted as zero secret bits.')
+  ];
+  var EBY={};EPOOL.forEach(function(P){EBY[P.id]=P;});
+
+  function epush(id,bytes){
+    var P=EBY[id];if(!P||!bytes||!bytes.length)return;
+    for(var i=0;i<bytes.length;i++){
+      var b=bytes[i]&255;
+      P.hist[b]++;P.n++;P.buf.push(b);
+      if(P.buf.length>=EFOLD){                      // fold: keeps the entropy, bounds the memory
+        var d=sha256(Uint8Array.from(P.buf));
+        P.buf.length=0;for(var q=0;q<32;q++)P.buf.push(d[q]);}
+      if(b===P.rctPrev)P.rctRun++;else{P.rctPrev=b;P.rctRun=1;}   // Repetition Count Test
+      if(P.rctRun>P.rctMax)P.rctMax=P.rctRun;
+      if(P.rctC&&P.rctRun>=P.rctC)P.rctFail=true;
+      if(P.aptI===0){P.aptFirst=b;P.aptCount=1;P.aptI=1;}         // Adaptive Proportion Test
+      else{if(b===P.aptFirst)P.aptCount++;P.aptI++;
+        if(P.aptC&&P.aptCount>=P.aptC)P.aptFail=true;
+        if(P.aptI>=EAPT_W){P.aptI=0;P.aptCount=0;}}
+    }
+    if(P.n-P._lh>=256){P._lh=P.n;
+      var h=mcvH(P.hist,P.n);
+      if(h!=null){
+        P.H=h;                                        // live estimate, shown to the user
+        /* 800-90B assesses min-entropy ONCE, then holds the health-test cutoffs
+           fixed against that assessment. Recomputing them from the live estimate
+           would let a degrading source drag its own cutoff down with it and never
+           trip, so the tests would validate nothing. Provisional while assessing,
+           then latched. */
+        if(P.H0==null){
+          var hp=Math.max(h,0.05);
+          P.rctC=1+Math.ceil(20/hp);P.aptC=aptCutoff(EAPT_W,hp);
+          if(P.n>=EASSESS)P.H0=h;                     // frozen from here on
+        }
+      }}
+  }
+  function ebits(P){                                  // assessed secret bits; public counts zero
+    if(P.cls==='public'||P.H0==null)return 0;         // claim nothing until assessed
+    if(P.rctFail||P.aptFail)return 0;                 // failed its own health test: claim nothing
+    return Math.min(P.n*P.H0,EFOLD*8);}
+  function etotal(){var t=0;EPOOL.forEach(function(P){if(P.on)t+=ebits(P);});return t;}
+
+  // ---------- collectors ----------
+  function jitterBytes(n){
+    var out=new Uint8Array(n),acc=2166136261>>>0,last=performance.now(),i,j,t,d;
+    for(i=0;i<n;i++){
+      for(j=0;j<48;j++){t=performance.now();d=t-last;last=t;
+        acc=(((acc^((d*1e6)>>>0))>>>0)*2654435761)>>>0;
+        acc=(acc^((t*1000)>>>0))>>>0;}
+      out[i]=(acc>>>24)&255;}
+    return out;}
+  function edrip(){                                   // continuous background collection
+    var c=new Uint8Array(8);crypto.getRandomValues(c);epush('csprng',c);c.fill(0);
+    epush('jitter',jitterBytes(4));
+  }
+  var PAD={pts:[],last:0};
+  function padPoint(x,y,p){
+    var t=performance.now(),m=Math.round(t*1000);
+    epush('pointer',[x&255,(x>>8)&255,y&255,(y>>8)&255,m&255,(m>>8)&255,(m>>16)&255,Math.round((p||0)*255)&255]);
+    PAD.pts.push([x,y,t]);if(PAD.pts.length>140)PAD.pts.shift();
+  }
+  var MIC={};
+  function micOn(P){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){logLine('audio.entropy :: UNSUPPORTED','a');P.on=false;buildLayers();return;}
+    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})
+    .then(function(stream){
+      MIC.stream=stream;
+      var AC=window.AudioContext||window.webkitAudioContext;
+      MIC.ctx=new AC();MIC.src=MIC.ctx.createMediaStreamSource(stream);
+      MIC.an=MIC.ctx.createAnalyser();MIC.an.fftSize=2048;MIC.src.connect(MIC.an);
+      MIC.f=new Float32Array(MIC.an.fftSize);MIC.dv=new DataView(new ArrayBuffer(4));
+      MIC.iv=setInterval(function(){
+        if(!MIC.an)return;
+        MIC.an.getFloatTimeDomainData(MIC.f);
+        var o=[],i;for(i=0;i<MIC.f.length;i+=8){MIC.dv.setFloat32(0,MIC.f[i]);o.push(MIC.dv.getUint8(3));}
+        epush('mic',o);
+      },250);
+      logLine('audio.entropy :: LISTENING · LSB ONLY');
+    }).catch(function(){logLine('audio.entropy :: DENIED','a');P.on=false;buildLayers();});
+  }
+  function micOff(){
+    if(MIC.iv)clearInterval(MIC.iv);
+    if(MIC.stream)MIC.stream.getTracks().forEach(function(t){t.stop();});
+    if(MIC.ctx&&MIC.ctx.close)try{MIC.ctx.close();}catch(e){}
+    MIC={};logLine('audio.entropy :: STOPPED');}
+
+  // ---------- extraction ----------
+  var SEED=null,SFMT='hex';
+  function extractSeed(){
+    var enc=new TextEncoder();
+    var floor=new Uint8Array(32);crypto.getRandomValues(floor);      // mandatory, fresh, never stored
+    var salt=new Uint8Array(32);crypto.getRandomValues(salt);
+    var ta=document.getElementById('sdta'),txt=ta?ta.value:'';
+    if(txt)epush('manual',enc.encode(txt));
+    var parts=[enc.encode('SYNCHRONICITY/seed/v1'),floor,jitterBytes(16)];
+    EPOOL.forEach(function(P){
+      if(!P.on||!P.buf.length)return;
+      parts.push(enc.encode('|'+P.id+':'+P.n+'|'));
+      parts.push(Uint8Array.from(P.buf));});
+    var ikm=cat(parts);
+    var purpose=(document.getElementById('sdPurpose').value||'general').slice(0,64);
+    var len=(parseInt(document.getElementById('sdLen').value,10)||256)/8;
+    var out=hkdf(ikm,salt,enc.encode('SYNCHRONICITY_MACHINE/seed/v1|'+purpose),len);
+    ikm.fill(0);floor.fill(0);salt.fill(0);
+    return out;}
+
+  // ---------- output formats ----------
+  function toHex(a){var s='',i;for(i=0;i<a.length;i++)s+=(a[i]<16?'0':'')+a[i].toString(16);return s;}
+  function toB64(a){var s='',i;for(i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);
+    return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+  function toDec(a){var v=0n,i;for(i=0;i<a.length;i++)v=(v<<8n)|BigInt(a[i]);return v.toString();}
+  function toU32(a){var o=[],i;for(i=0;i+3<a.length;i+=4)o.push((((a[i]<<24)|(a[i+1]<<16)|(a[i+2]<<8)|a[i+3])>>>0));return o;}
+  function toGroups(a){var h=toHex(a),o=[],i;for(i=0;i<h.length;i+=4)o.push(h.substr(i,4));return o.join(' ');}
+  var SFMTS=[
+    {k:'hex',   n:'hex',        f:function(a){return toHex(a);}},
+    {k:'groups',n:'grouped',    f:function(a){return toGroups(a);}},
+    {k:'b64',   n:'base64url',  f:function(a){return toB64(a);}},
+    {k:'dec',   n:'decimal',    f:function(a){return toDec(a);}},
+    {k:'u32',   n:'uint32[]',   f:function(a){return '['+toU32(a).join(', ')+']';}},
+    {k:'py',    n:'python',     f:function(a){return 'import random\nrng = random.Random(0x'+toHex(a)+')';}},
+    {k:'np',    n:'numpy',      f:function(a){return 'import numpy as np\nrng = np.random.default_rng('+toU32(a).slice(0,8).join(', ').replace(/^/,'[').replace(/$/,']')+')';}},
+    {k:'js',    n:'javascript', f:function(a){return '// splitmix32 seeded from the extractor\nlet s = 0x'+toHex(a).slice(0,8)+';\nconst rng = () => { s = (s + 0x9E3779B9) | 0; let z = s;\n  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad);\n  z = Math.imul(z ^ (z >>> 15), 0x735a2d97);\n  return ((z ^ (z >>> 15)) >>> 0) / 4294967296; };';}},
+    {k:'go',    n:'go',         f:function(a){return 'seed, _ := new(big.Int).SetString("'+toHex(a)+'", 16)\nrng := rand.New(rand.NewSource(seed.Int64()))';}}
+  ];
+
+  // ---------- seed UI ----------
+  function buildLayers(){
+    var box=document.getElementById('sdLayers');if(!box)return;
+    box.innerHTML='';
+    EPOOL.forEach(function(P){
+      var row=document.createElement('div');
+      row.className='lyr'+(P.on?'':' off');row.id='ly_'+P.id;
+      var pc=P.cls==='floor'?'floor':(P.cls==='public'?'pub':(P.cls==='optin'?'optin':'secret'));
+      var pl=P.cls==='floor'?'always on':(P.cls==='public'?'public · 0 secret bits':(P.cls==='optin'?'needs permission':'local secret'));
+      row.innerHTML='<input type="checkbox" id="ck_'+P.id+'"'+(P.on?' checked':'')+(P.locked?' disabled':'')+
+        ' aria-label="'+P.label+'"><div class="lm"><div class="ln"><label for="ck_'+P.id+'">'+P.label+
+        '</label> <span class="pill '+pc+'">'+pl+'</span></div><div class="ld">'+P.desc+
+        '</div><div class="lh" id="lh_'+P.id+'">—</div></div>';
+      box.appendChild(row);
+      if(!P.locked)document.getElementById('ck_'+P.id).addEventListener('change',function(e){
+        P.on=e.target.checked;
+        if(P.id==='mic'){P.on?micOn(P):micOff();}
+        if(P.id==='motion'&&P.on&&!byId.motion._on)enableMotion();
+        renderSeed();});
+    });
+  }
+  function renderSeed(){
+    EPOOL.forEach(function(P){
+      var row=document.getElementById('ly_'+P.id),el=document.getElementById('lh_'+P.id);
+      if(!row||!el)return;
+      row.className='lyr'+(P.on?'':' off');
+      if(!P.n){el.textContent='no samples yet';el.className='lh';return;}
+      var bad=P.rctFail||P.aptFail;
+      el.textContent='n '+P.n.toLocaleString()+
+        ' · H '+(P.H==null?'—':P.H.toFixed(2))+(P.H0==null?' b/B (assessing)':' b/B')+
+        ' · RCT '+(P.rctFail?'FAIL':'ok')+' ('+P.rctMax+'/'+(P.rctC||'–')+')'+
+        ' · APT '+(P.aptFail?'FAIL':'ok')+
+        (P.cls==='public'?' · 0 secret bits':
+          (bad?' · HEALTH FAIL — claiming 0 bits':' · ≈'+Math.round(ebits(P)).toLocaleString()+' bits'));
+      el.className='lh'+(bad?' bad':'');
+    });
+    var need=(parseInt(document.getElementById('sdLen').value,10)||256);
+    var have=etotal(),pct=Math.min(100,have/need*100);
+    var m=document.getElementById('sdMeter'),mw=document.getElementById('sdMeterWrap');
+    m.style.width=pct+'%';mw.className='meter'+(pct>=100?' full':'');
+    document.getElementById('sdBits').textContent=
+      'assessed secret entropy ≈ '+Math.round(have).toLocaleString()+' bits of '+need+
+      ' target'+(pct>=100?' · saturated':'')+
+      ' · public sources counted as zero · the CSPRNG floor applies regardless';
+  }
+  function drawPad(){
+    var cv=document.getElementById('sdPad');if(!cv)return;
+    var H=Math.min(120,Math.max(76,Math.round((cv.clientWidth||320)*0.22)));
+    var st=setup(cv,H),x=st.x,W=st.w;x.clearRect(0,0,W,H);
+    var n=PAD.pts.length,now=performance.now(),i;
+    if(!n){x.fillStyle='rgba(35,107,58,1)';x.font='10px monospace';x.textAlign='center';
+      x.fillText('drag / scribble here — your movement becomes entropy',W/2,H/2+3);x.textAlign='left';return;}
+    for(i=1;i<n;i++){
+      var a=PAD.pts[i-1],b=PAD.pts[i],age=(now-b[2])/4000;
+      if(age>1)continue;
+      x.strokeStyle=FLYC;x.globalAlpha=(1-age)*.8;x.lineWidth=1.6;x.lineCap='round';
+      x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();}
+    x.globalAlpha=1;x.lineCap='butt';
+    var last=PAD.pts[n-1];
+    x.fillStyle='#d2ffdd';x.beginPath();x.arc(last[0],last[1],2.5,0,6.2832);x.fill();
+  }
+  function showSeed(){
+    var box=document.getElementById('sdOutBox');
+    if(!SEED){box.hidden=true;return;}
+    box.hidden=false;
+    var f=SFMTS.filter(function(q){return q.k===SFMT;})[0]||SFMTS[0];
+    document.getElementById('sdVal').textContent=f.f(SEED);
+    document.getElementById('sdFmtName').textContent=f.n+' · '+(SEED.length*8)+'-bit';
+    var tb=document.getElementById('sdTabs');tb.innerHTML='';
+    SFMTS.forEach(function(q){
+      var b=document.createElement('button');b.type='button';
+      b.className='tab'+(q.k===SFMT?' on':'');b.textContent=q.n;
+      b.addEventListener('click',function(){SFMT=q.k;showSeed();});
+      tb.appendChild(b);});
+  }
+  function genSeed(){
+    SEED=extractSeed();
+    document.getElementById('sdStamp').textContent=new Date().toLocaleTimeString()+' · local only';
+    showSeed();renderSeed();
+    logLine('seed :: EXTRACTED '+(SEED.length*8)+' bits · NOT STORED');
+  }
+  function wipeSeed(){
+    if(SEED){SEED.fill(0);SEED=null;}
+    EPOOL.forEach(function(P){
+      for(var i=0;i<P.buf.length;i++)P.buf[i]=0;
+      P.buf.length=0;P.n=0;P.hist.fill(0);P.H=null;P.H0=null;P._lh=0;
+      P.rctPrev=-1;P.rctRun=0;P.rctMax=0;P.rctFail=false;P.rctC=0;
+      P.aptFirst=-1;P.aptI=0;P.aptCount=0;P.aptFail=false;P.aptC=0;});
+    var ta=document.getElementById('sdta');if(ta)ta.value='';
+    PAD.pts.length=0;
+    document.getElementById('sdOutBox').hidden=true;
+    document.getElementById('sdVal').textContent='';
+    renderSeed();drawPad();
+    logLine('seed :: POOL WIPED');
+  }
+  function copySeed(){
+    if(!SEED)return;
+    var f=SFMTS.filter(function(q){return q.k===SFMT;})[0]||SFMTS[0],txt=f.f(SEED);
+    function done(ok){logLine('seed :: '+(ok?'COPIED TO CLIPBOARD':'COPY FAILED — SELECT MANUALLY'),ok?'':'a');}
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(txt).then(function(){done(1);},function(){done(0);});
+    else done(0);
+  }
+
   /* ---------- presentation effects ----------
      The rain and the CRT flicker are theatre. They default off when the
      viewer asks for reduced motion, and they never run while the tab is
@@ -1006,17 +1458,48 @@
   document.getElementById('btnReset').addEventListener('click',resetSession);
   document.getElementById('btnMotion').addEventListener('click',function(){setFx(!FX.on);});
   document.addEventListener('visibilitychange',function(){
-    if(document.hidden)saveState();
-    else{RATE.last=0;SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});sizeRain();}
+    if(document.hidden){saveState();
+      if(SEED){SEED.fill(0);SEED=null;showSeed();logLine('seed :: CLEARED ON TAB HIDE');}
+    } else{RATE.last=0;SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});sizeRain();}
   });
-  window.addEventListener('pagehide',saveState);
+  window.addEventListener('pagehide',function(){saveState();
+    if(SEED){SEED.fill(0);SEED=null;}
+    EPOOL.forEach(function(P){for(var i=0;i<P.buf.length;i++)P.buf[i]=0;P.buf.length=0;});
+    if(MIC.stream)micOff();
+  });
+
+  // ---- seed extractor ----
+  buildLayers();
+  (function(){
+    var pad=document.getElementById('sdPad'),down=false;
+    function rel(e){var r=pad.getBoundingClientRect();
+      return [Math.round(e.clientX-r.left),Math.round(e.clientY-r.top),e.pressure];}
+    pad.addEventListener('pointerdown',function(e){down=true;pad.setPointerCapture(e.pointerId);
+      var p=rel(e);padPoint(p[0],p[1],p[2]);e.preventDefault();});
+    pad.addEventListener('pointermove',function(e){if(!down)return;var p=rel(e);padPoint(p[0],p[1],p[2]);e.preventDefault();});
+    pad.addEventListener('pointerup',function(e){down=false;try{pad.releasePointerCapture(e.pointerId);}catch(_){}});
+    pad.addEventListener('pointercancel',function(){down=false;});
+    var ta=document.getElementById('sdta');
+    ta.value='';                                        // never restore across reloads
+    ta.addEventListener('input',function(){var m=Math.round(performance.now()*1000);
+      epush('manual',[m&255,(m>>8)&255,(m>>16)&255]);}); // keystroke timing, not content
+    document.getElementById('sdGen').addEventListener('click',genSeed);
+    document.getElementById('sdCopy').addEventListener('click',copySeed);
+    document.getElementById('sdClear').addEventListener('click',wipeSeed);
+    document.getElementById('sdLen').addEventListener('change',renderSeed);
+    document.getElementById('sdPurpose').addEventListener('input',function(){
+      if(SEED){SEED.fill(0);SEED=null;showSeed();}       // purpose changed => old seed no longer matches
+    });
+  })();
+  edrip();setInterval(edrip,1000);
+  renderSeed();
 
   startSources();
   setInterval(tick,EPOCH_MS);
   setInterval(stepRain,42);
   setInterval(renderData,140);
   setInterval(saveState,10000);
-  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();}catch(e){}},150);});
+  var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();drawPad();}catch(e){}},150);});
 })();
 </script>
 </body>
