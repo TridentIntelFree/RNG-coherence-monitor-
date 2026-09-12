@@ -13,9 +13,43 @@ alongside and never touches the statistic.
 ## The statistic
 
 Each epoch, over the arms with genuinely fresh data: `Z = Σzᵢ/√N`, coherence
-`c = Z²` (χ²₁, mean 1 under independence). The walk is `Σ(c−1)`; session
-significance `Zc = Σ(c−1)/√(2N)` ≈ N(0,1). Computed for the full swarm and
-separately for the physical and algorithmic subsets.
+`c = Z²` (χ²₁, mean 1 under independence). The walk is `Σ(c−1)`. Computed for
+the full swarm and separately for the physical and algorithmic subsets.
+
+The textbook session significance `Σ(c−1)/√(2N)` assumes every epoch is
+independent of the last — but that assumption *is* the experiment, so it isn't
+taken on trust. The long-run variance is estimated from the series itself
+(Newey–West, Bartlett window): it collapses to exactly `√(2N)` when epochs
+really are independent, and widens the error bar when they aren't. The estimate
+is clamped so the correction can only ever widen the interval, never narrow it —
+a downward sampling fluctuation would otherwise manufacture confidence. The
+inflation factor shows as `vif` when it exceeds 1.05.
+
+**The one rule, instrumented.** Every arm must be an independent draw, so every
+arm is measured for it: each row reports live `n`, realised `σ̂` (should be 1.00)
+and lag-1 `r₁` (should be 0), and flags amber past 4σ. This caught the original
+Coinbase arm — an EWMA z of realised volatility, which inherits volatility
+clustering at `r₁ ≈ 0.72`. With only two live physical arms that pushed the
+detector panel's p<0.05 rate from 5% to 12%. It now draws from trade arrival
+timing and tick/size low bits. No variance estimator can rescue a badly
+dependent arm, so the tool names the offender instead of absorbing it.
+
+**Detector vs control.** The subsets use disjoint arms, so their session Z's are
+independent and `(Z_det − Z_ctl)/√2` is itself ≈N(0,1). That difference is the
+hypothesis the whole instrument exists to test, so it's reported with a p-value.
+
+## Running it
+
+The session survives a reload — only running sums are stored, so a resumed
+session is numerically identical to one that never stopped. `Reset` discards it.
+`CSV` exports the per-epoch series; `JSON` exports the full session state
+including every arm's diagnostics.
+
+`setInterval` is not a clock: a hidden tab gets throttled, often to once a
+minute. A late epoch is **discarded**, not counted, and the stream backlog
+cleared — folding a minute of events into one "one-second" draw would change
+what the arms measure. Discarded gaps and measured epoch spacing are both shown.
+Sampling continues while the tab is hidden; only the painting stops.
 
 ## The fly-brain readout
 
@@ -48,12 +82,23 @@ matched synthetic noise, and both readouts are reported as **paired differences
 against that live null**: `Z_fam` from `MBON_null − MBON_signal`, `Z_ring` from
 `PVA_signal − PVA_null`.
 
-Read those two loosely. The depression trace carries memory across epochs, so
-consecutive samples are not independent and the paired Z runs optimistic; and both
-readouts share the same input, so their p-values must not be multiplied.
+The paired differences are not independent across epochs — the MBON depression
+trace and the ring attractor both carry state — so the same Newey–West correction
+the main statistic uses is applied here, with the same one-directional floor.
+
+Read them loosely anyway. Measured against a pure null over 360 independent cold
+boots of 1200 epochs, `Z_fam` crosses |Z|>1.96 about 6.7% of the time and `Z_ring`
+about 5.6%, against a nominal 5%: the MBON trace's memory runs to ~220 epochs,
+past what any practical lag window recovers. These are exploratory readouts, not
+calibrated evidence. And never multiply the two p-values — they share an input.
 
 ## What this is not
 
 It measures **coincidence, not meaning**. Run long enough and you *will* cross
 p<0.05 about one session in twenty by chance — that is calibration, not a message.
 Every arm must be an independent draw; never derive one arm from another.
+
+The page shows several statistics at once — full swarm, detectors, controls,
+their difference, and two fly-brain readouts. They are not independent tests and
+no correction is applied across them. Don't read the smallest p on the page as
+if it were the only one you looked at.

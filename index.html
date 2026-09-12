@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SYNCHRONICITY_MACHINE//</title>
+<meta name="description" content="A per-second swarm of independent entropy sources, watched for coherence beyond chance — with a Drosophila-connectome readout and an algorithmic null control. Measures coincidence, not meaning.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000600">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000600'/%3E%3Cpath d='M3 24 Q9 8 16 16 T29 8' stroke='%2300ff66' stroke-width='2.5' fill='none'/%3E%3Ccircle cx='29' cy='8' r='3' fill='%23d2ffdd'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -48,6 +52,14 @@
   .mbtn{display:block;width:100%;margin-top:12px;padding:11px;border:1px solid var(--edge);border-radius:6px;background:rgba(0,40,14,.4);
     color:var(--grn);font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-shadow:0 0 6px rgba(0,255,102,.4)}
   .mbtn:active{background:rgba(0,255,102,.12)}
+  .ctl{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .cbtn{flex:1 1 auto;min-width:88px;padding:8px 9px;border:1px solid var(--edge);border-radius:5px;background:rgba(0,40,14,.4);
+    color:var(--grn);font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;cursor:pointer}
+  .cbtn:hover{background:rgba(0,255,102,.09)}
+  .cbtn:active{background:rgba(0,255,102,.16)}
+  .cbtn:focus-visible{outline:2px solid var(--grn);outline-offset:2px}
+  .cbtn.danger{color:var(--red);border-color:rgba(255,77,94,.4)}
+  .cbtn.off{color:var(--faint);border-color:var(--hair)}
 
   .gaugeCard{margin-top:12px;padding:12px 14px 8px}
   #gauge{display:block;width:100%}
@@ -112,7 +124,10 @@
 
   footer{margin-top:18px;text-align:center;font-size:10px;color:var(--faint);letter-spacing:.05em;line-height:1.7}
   @media (max-width:430px){.tele{grid-template-columns:1fr}}
-  @media (prefers-reduced-motion:reduce){body::after{animation:none}.glitch{animation:none}}
+  @media (prefers-reduced-motion:reduce){body::after{animation:none}.glitch{animation:none}#rain{display:none}}
+  html.nofx #rain{display:none}
+  html.nofx body::after{animation:none}
+  html.nofx .glitch{animation:none}
 </style>
 </head>
 <body>
@@ -132,6 +147,13 @@
       </div>
     </div>
     <button id="motionBtn" class="mbtn">⊕ enable phone motion sensor — adds a real hardware-entropy arm</button>
+    <div class="ctl">
+      <button id="btnPause" class="cbtn" type="button" title="Stop sampling; the session is kept">⏸ Pause</button>
+      <button id="btnCsv"   class="cbtn" type="button" title="Per-epoch series for the visible window">⇩ CSV</button>
+      <button id="btnJson"  class="cbtn" type="button" title="Full session summary and per-arm diagnostics">⇩ JSON</button>
+      <button id="btnMotion" class="cbtn" type="button" title="Background animation">◐ FX</button>
+      <button id="btnReset" class="cbtn danger" type="button" title="Discard the session and start a new one">⟲ Reset</button>
+    </div>
   </header>
 
   <div class="term gaugeCard">
@@ -175,7 +197,7 @@
       <div class="cell"><div class="k">KC sparse code</div><div class="v" id="fbSp">–</div></div>
       <div class="cell"><div class="k">Compass heading</div><div class="v" id="fbHd">–</div></div>
     </div>
-    <div class="hint">The same swarm, read by a <span style="color:var(--fly)">Drosophila-shaped circuit</span> instead of a sum: antennal-lobe gain control → 2000 Kenyon cells on random claws → APL winner-take-all → a depressing MBON synapse (low = <em>seen this before</em>), plus a 16-wedge ellipsoid-body ring attractor. Every epoch an <span style="color:var(--grn2)">identical twin brain</span> gets matched synthetic noise, so both readouts are <b>paired differences against a live null</b>. This never enters the coherence statistic — it is a second detector, not a source.</div>
+    <div class="hint">The same swarm, read by a <span style="color:var(--fly)">Drosophila-shaped circuit</span> instead of a sum: antennal-lobe gain control → 2000 Kenyon cells on random claws → APL winner-take-all → a depressing MBON synapse (low = <em>seen this before</em>), plus a 16-wedge ellipsoid-body ring attractor. Every epoch an <span style="color:var(--grn2)">identical twin brain</span> gets matched synthetic noise, so both readouts are <b>paired differences against a live null</b>. This never enters the coherence statistic — it is a second detector, not a source. Both Z's are autocorrelation-corrected but run mildly optimistic (≈6.7% / 5.6% against a nominal 5% on a measured null); treat them as exploratory.</div>
   </div>
 
   <div class="term panel">
@@ -197,10 +219,13 @@
     <div class="ptop"><div class="ptitle">> TELEMETRY</div><div class="pmeta">continuous · 1 Hz</div></div>
     <div class="tele">
       <div class="cell"><div class="k">Epochs N</div><div class="v" id="tN">–</div></div>
-      <div class="cell"><div class="k">Epoch</div><div class="v">1.0 s</div></div>
+      <div class="cell"><div class="k">Epoch · measured</div><div class="v" id="tEpoch">–</div></div>
       <div class="cell"><div class="k">Uptime</div><div class="v" id="tElapsed">00:00:00</div></div>
       <div class="cell"><div class="k">Live / total arms</div><div class="v" id="tSrc">– / –</div></div>
+      <div class="cell"><div class="k">Gaps discarded</div><div class="v" id="tGaps">0</div></div>
+      <div class="cell"><div class="k">Session began</div><div class="v" id="tStart">–</div></div>
     </div>
+    <div class="hint">The session survives a reload — only running sums are stored, so a resumed session is numerically identical to one that never stopped. An epoch that arrives late (a throttled background tab) is <em>discarded</em>, not counted: it would fold minutes of stream events into a single "one-second" draw.</div>
   </div>
 
   <details class="term">
@@ -209,9 +234,20 @@
       <h4>The idea</h4>
       <p>The version the Global Consciousness Project actually measured: <em>coherence across a network of independent generators</em>. It never mattered what a generator "meant" — only that it was an independent source sampled continuously. So this is a swarm of independent entropy arms, each drawn fresh <b>every second</b>, watched for the moment they agree more than independence allows.</p>
       <h4>The live tier — what the statistic runs on</h4>
-      <p><b>Algorithmic / null controls:</b> a CSPRNG plus five separately-seeded PRNGs (xorshift, PCG, splitmix, mulberry, Lehmer). They are deterministic, so they cannot carry a real anomaly — they are distributed null controls. <b>Physical detectors:</b> CPU/clock timing jitter, the phone motion sensor (opt-in), the <em>arrival-timing</em> jitter of the Wikipedia / Bluesky / Mastodon firehoses (when each event lands, not its content), drand quicknet, and the Coinbase trade tape. Every arm contributes to an epoch <em>only when it has genuinely new data</em> — no stale value is ever re-counted.</p>
+      <p><b>Algorithmic / null controls:</b> a CSPRNG plus five separately-seeded PRNGs (xorshift, PCG, splitmix, mulberry, Lehmer). They are deterministic, so they cannot carry a real anomaly — they are distributed null controls. <b>Physical detectors:</b> CPU/clock timing jitter, the phone motion sensor (opt-in), the <em>arrival-timing</em> jitter of the Wikipedia / Bluesky / Mastodon firehoses (when each event lands, not its content), drand quicknet, and the Coinbase trade tape (arrival timing plus tick and size low bits — the price itself is display only). Every arm contributes to an epoch <em>only when it has genuinely new data</em> — no stale value is ever re-counted.</p>
       <h4>The metric</h4>
-      <p>Each second, over the arms with a fresh draw: <code>Z = Σzᵢ/√N</code>, coherence <code>c = Z²</code> (<code>χ²₁</code>, mean 1 under independence). The walk is <code>Σ(c−1)</code>; session significance <code>Zc = Σ(c−1)/√(2N)</code> ≈ N(0,1). The same is computed separately for the physical subset (detectors) and the algorithmic subset (controls).</p>
+      <p>Each second, over the arms with a fresh draw: <code>Z = Σzᵢ/√N</code>, coherence <code>c = Z²</code> (<code>χ²₁</code>, mean 1 under independence). The walk is <code>Σ(c−1)</code>. The same is computed separately for the physical subset (detectors) and the algorithmic subset (controls).</p>
+      <h4>The p-value, and why it is not just Σ(c−1)/√(2N)</h4>
+      <p>That textbook form assumes every epoch is independent of the last. <em>That assumption is the experiment</em>, so it is not taken on trust. The long-run variance of the <code>(c−1)</code> series is estimated from the series itself (Newey–West, Bartlett window) and used in place of the nominal <code>2</code>. When epochs really are independent this collapses to exactly <code>√(2N)</code> and nothing changes; when an arm carries memory it widens the error bar instead of letting that memory read as signal. The inflation factor is shown as <code>vif</code> whenever it exceeds 1.05.</p>
+      <p>It is deliberately one-directional: the estimate is clamped so the correction can <em>only ever widen</em> the interval, never narrow it. A downward sampling fluctuation would otherwise manufacture confidence, which is the one direction this instrument must not drift. The cost is a little power — on a clean null it fires at p&lt;0.05 about 4% of the time rather than 5%.</p>
+      <h4>The one rule, instrumented</h4>
+      <p>Every arm must be an independent draw — so every arm is <em>measured</em> for it. Each row reports its live sample count, its realised <code>σ̂</code> (should be 1.00) and its lag-1 autocorrelation <code>r₁</code> (should be 0), and turns amber past 4σ from either. This caught the original Coinbase arm, which emitted an EWMA z of realised volatility and so inherited volatility clustering at <code>r₁ ≈ 0.72</code>; with only two live physical arms that pushed the detector panel's p&lt;0.05 rate from 5% to 12%. It now draws from trade arrival timing and tick/size low bits, like the other tape arms. No variance estimator can rescue a badly dependent arm — so the instrument says which arm is misbehaving rather than quietly absorbing it.</p>
+      <h4>Detector vs control — the actual test</h4>
+      <p>The two subsets use <em>disjoint</em> arms, so their session Z's are independent and <code>(Z_det − Z_ctl)/√2</code> is itself ≈N(0,1). That difference is the hypothesis this whole instrument exists to test, so it is reported with a p-value instead of being left for the eye.</p>
+      <h4>Sessions, gaps and reading several numbers at once</h4>
+      <p>The session survives a reload: only running sums are stored, so a resumed session is numerically identical to one that never stopped. <code>Reset</code> discards it; <code>CSV</code> and <code>JSON</code> export the epoch series and the full state including every arm's diagnostics.</p>
+      <p><code>setInterval</code> is not a clock — a hidden tab gets throttled, often to once a minute. A late epoch is <em>discarded</em>, not counted, and the backlog cleared: folding a minute of stream events into one "one-second" draw would change what the arms are measuring. Discarded gaps and the measured epoch spacing are both shown.</p>
+      <p class="warn">This page shows several statistics at once — full swarm, detectors, controls, their difference, and two fly-brain readouts. They are not independent tests and there is no correction applied across them. Do not read the smallest p on the page as if it were the only one you looked at.</p>
       <h4>The context ring — kept, but outside the math</h4>
       <p>Solar wind, seismic, barometric, tide, river, air quality, ocean swell, NIST, Hacker News and GitHub update every few minutes — far too slow for a 1 Hz statistic, where they'd just be one frozen value re-counted hundreds of times. So they ride alongside as honest, timestamped context and <em>never</em> touch the coherence number. (Browser-hostile ones flag "may need proxy.")</p>
       <h4>The fly brain — a second way of looking, not a second source</h4>
@@ -220,14 +256,15 @@
       <p>So it answers two questions the sum cannot: <b>has this configuration happened before?</b> (familiarity) and <b>does the swarm point somewhere?</b> (bump coherence).</p>
       <h4>Why it cannot manufacture coherence</h4>
       <p>Because it is <em>not an arm</em>. It is derived from the arms, so putting it in the statistic would be exactly the mistake the rule below forbids — it is kept strictly outside. And because it is derived, it has no analytic null: a circuit with memory has no clean χ². So every epoch an <b>identical twin brain</b> — same wiring, same parameters, same number of live channels — is fed <em>matched synthetic noise</em>, and both readouts are reported as <b>paired differences against that live null</b>: <code>Z_fam</code> from <code>MBON_null − MBON_signal</code>, <code>Z_ring</code> from <code>PVA_signal − PVA_null</code>. Positive means the real swarm looks more structured than matched noise.</p>
-      <p class="warn">Read those two Z's loosely. The synaptic-depression trace carries memory across epochs, so consecutive samples are <em>not</em> independent and the paired Z runs optimistic — treat |Z| ≈ 2 as unremarkable, and do not multiply the two p-values together: both readouts share the same input, so they are correlated by construction.</p>
+      <p>The paired differences are <em>not</em> independent across epochs — the MBON depression trace and the ring attractor both carry state — so the same Newey–West correction the main statistic uses is applied here too, with the same one-directional floor.</p>
+      <p class="warn">Even so, read these two loosely. Measured against a pure null over 360 independent cold boots of 1200 epochs each, <code>Z_fam</code> crosses |Z|&gt;1.96 about 6.7% of the time and <code>Z_ring</code> about 5.6%, against a nominal 5% — the MBON trace's memory runs to roughly 220 epochs, well past what any practical lag window recovers. So these readouts run mildly optimistic and should be treated as exploratory, not as calibrated evidence. And never multiply the two p-values together: both readouts share the same input, so they are correlated by construction.</p>
       <h4 class="warn">The one rule, and what this is NOT</h4>
-      <p class="warn">Every arm must be an <em>independent draw</em> — never arm B derived from arm A; that single mistake manufactures fake coherence. It measures <em>coincidence, not meaning</em> — Jung's synchronicity is what an observer reads into a coincidence; no instrument supplies that. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by chance — calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
+      <p class="warn">Every arm must be an <em>independent draw</em> — never arm B derived from arm A; that single mistake manufactures fake coherence. (Which is why the fly brain is a readout and not an arm, and why each arm's independence is measured on screen rather than assumed.) It measures <em>coincidence, not meaning</em> — Jung's synchronicity is what an observer reads into a coincidence; no instrument supplies that. And run long enough and you <em>will</em> cross p&lt;0.05 ~1 session in 20 by chance — calibration, not a message. The "glitch" is theatre for a spike; the verdict text stays honest.</p>
       <p style="color:var(--faint);margin-top:12px">Sources: crypto.getRandomValues · device timing &amp; motion · drand · Coinbase · Wikimedia · Bluesky · Mastodon (live) · NOAA · USGS · Open-Meteo · NIST · HN · GitHub (context). Readout circuit after the <em>Drosophila</em> mushroom body and central complex (hemibrain / FlyWire connectome literature) — a model of that circuit's shape, not fly data. Independent tool, unaffiliated.</p>
     </div>
   </details>
 
-  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>per-second independent entropy swarm + slow context ring + fly-brain readout · extend via the recipe atop the script</footer>
+  <footer>SYNCHRONICITY_MACHINE // order ⇄ chaos // coincidence, not meaning<br>per-second independent entropy swarm + slow context ring + fly-brain readout<br>HAC-corrected significance · per-arm independence meters · session survives reload · extend via the recipe atop the script</footer>
 </div>
 
 <script>
@@ -310,9 +347,42 @@
     {key:'context',title:'CONTEXT · NOT IN STATISTIC',ctx:true}
   ];
 
+  /* ---------- heteroskedasticity- and autocorrelation-consistent variance ----------
+     Any statistic here is a running mean over epochs, and every one of them is
+     only N(0,1) if those epochs are independent. That independence is the thing
+     under test, so it is measured rather than assumed: these three functions
+     accumulate the autocovariances of a series and return its long-run variance
+     (Newey-West, Bartlett window).
+
+     Two deliberate choices. Below 300 samples the estimate is noisier than the
+     problem it corrects, so it is not applied. And it is floored at the nominal
+     variance, so the correction may only ever WIDEN an interval, never narrow
+     it -- a downward sampling fluctuation would otherwise manufacture
+     confidence, the one direction this instrument must not drift. */
   var HLAG=24,HW=HLAG+1;
-  function makeAcc(){return {N:0,sum:0,sq:0,walk:[],pulse:[],cEW:1,cEWa:1-Math.pow(2,-1/15),
-    ring:new Float64Array(HW),head:0,cross:new Float64Array(HW)};}
+  function hacInit(o){o.N=0;o.sum=0;o.sq=0;o.head=0;o.ring=new Float64Array(HW);o.cross=new Float64Array(HW);return o;}
+  function hacPush(o,x){
+    o.N++;o.sum+=x;o.sq+=x*x;
+    var L=Math.min(HLAG,o.N-1);
+    for(var k=1;k<=L;k++)o.cross[k]+=x*o.ring[((o.head-k+1)%HW+HW)%HW];
+    o.head=(o.head+1)%HW;o.ring[o.head]=x;
+  }
+  function hacVar(o,floorVar){
+    var N=o.N;if(!N)return floorVar;
+    var m=o.sum/N,g0=o.sq/N-m*m,base=(floorVar!=null)?floorVar:g0;
+    if(N<300||!(g0>1e-12))return base;
+    var L=Math.max(1,Math.min(HLAG,Math.floor(4*Math.pow(N/100,2/9)))),s2=g0,k;
+    for(k=1;k<=L;k++)s2+=2*(1-k/(L+1))*(o.cross[k]/(N-k)-m*m);
+    if(!(s2>1e-9))s2=g0;
+    return Math.max(s2,base);
+  }
+  function packHac(o){return {N:o.N,sum:o.sum,sq:o.sq,head:o.head,
+    ring:Array.prototype.slice.call(o.ring),cross:Array.prototype.slice.call(o.cross)};}
+  function unpackHac(o,d){if(!d)return;
+    o.N=d.N|0;o.sum=+d.sum||0;o.sq=+d.sq||0;o.head=d.head|0;
+    for(var i=0;i<HW;i++){o.ring[i]=+((d.ring||[])[i])||0;o.cross[i]=+((d.cross||[])[i])||0;}}
+
+  function makeAcc(){return hacInit({walk:[],pulse:[],cEW:1,cEWa:1-Math.pow(2,-1/15)});}
   var FULL=makeAcc(),PHYS=makeAcc(),ALGO=makeAcc();
   var T0=Date.now(),glitchT=0,logT=0;
   var LOG=[];
@@ -346,35 +416,20 @@
   function accPush(acc,zs){
     if(zs.length<2)return null;
     var sum=0;for(var i=0;i<zs.length;i++)sum+=zs[i];
-    var Z=sum/Math.sqrt(zs.length),c=Z*Z,x=c-1;
-    acc.N++;acc.sum+=x;acc.sq+=x*x;acc.cEW+=acc.cEWa*(c-acc.cEW);
-    var L=Math.min(HLAG,acc.N-1);                       // running autocovariances of the (c-1) series
-    for(var k=1;k<=L;k++)acc.cross[k]+=x*acc.ring[((acc.head-k+1)%HW+HW)%HW];
-    acc.head=(acc.head+1)%HW;acc.ring[acc.head]=x;
+    var Z=sum/Math.sqrt(zs.length),c=Z*Z;
+    hacPush(acc,c-1);acc.cEW+=acc.cEWa*(c-acc.cEW);
     acc.walk.push(acc.sum);if(acc.walk.length>2000)acc.walk.splice(0,acc.walk.length-2000);
     acc.pulse.push(c);if(acc.pulse.length>120)acc.pulse.shift();
     return c;
   }
 
-  /* Session significance.
-     Under the stated assumption — every arm an independent draw, every epoch
-     independent of the last — c is chi-squared_1, Var(c)=2, and Zc = S/sqrt(2N).
-     That assumption IS the experiment, so it is not taken on trust: the long-run
-     variance of the (c-1) series is estimated from the series itself
-     (Newey-West, Bartlett window). When the epochs really are independent this
-     collapses to exactly sqrt(2N) and nothing changes; when an arm carries
-     memory it widens the error bar instead of letting it read as signal. */
+  /* Session significance. Under the stated assumption -- every arm an independent
+     draw, every epoch independent of the last -- c is chi-squared_1, Var(c)=2, and
+     Zc = S/sqrt(2N). hacVar measures that instead of assuming it. */
   function sessionZ(acc){
     var N=acc.N;if(!N)return {z:0,raw:0,vif:1,ok:true,n:0};
-    var raw=acc.sum/Math.sqrt(2*N);
-    if(N<60)return {z:raw,raw:raw,vif:1,ok:true,n:N};
-    var m=acc.sum/N,g0=acc.sq/N-m*m;
-    if(!(g0>1e-12))return {z:raw,raw:raw,vif:1,ok:true,n:N};
-    var L=Math.max(1,Math.min(HLAG,Math.floor(4*Math.pow(N/100,2/9)))),s2=g0,k;
-    for(k=1;k<=L;k++)s2+=2*(1-k/(L+1))*(acc.cross[k]/(N-k)-m*m);
-    if(!(s2>1e-9))s2=g0;
-    var vif=s2/2;
-    return {z:acc.sum/Math.sqrt(N*s2),raw:raw,vif:vif,ok:vif<1.25,n:N};
+    var raw=acc.sum/Math.sqrt(2*N),s2=hacVar(acc,2);
+    return {z:acc.sum/Math.sqrt(N*s2),raw:raw,vif:s2/2,ok:s2/2<1.25,n:N};
   }
 
   /* Per-arm independence diagnostics. The one rule is that every arm is an
@@ -415,7 +470,7 @@
   var FLYC='#c08bff';
   var FB={NPN:48,NKC:2000,CLAW:6,SPARSE:.05,NW:16,DEP:.055,REC:.0045,TRACE:150};
   FB.K=Math.max(1,Math.round(FB.NKC*FB.SPARSE));
-  var FBS={N:0,fs:0,fss:0,rs:0,rss:0,famZ:0,ringZ:0};
+  var FBS={N:0,fam:hacInit({}),ring:hacInit({}),famZ:0,ringZ:0,famVif:1,ringVif:1};
 
   function fbWire(seed){var r=mkSplitmix32(seed),cl=new Int16Array(FB.NKC*FB.CLAW);
     for(var j=0;j<FB.NKC;j++){var seen={};for(var c=0;c<FB.CLAW;c++){var g;do{g=(r()*FB.NPN)|0;}while(seen[g]);seen[g]=1;cl[j*FB.CLAW+c]=g;}}
@@ -470,8 +525,16 @@
     }
     return {pn:drv,ring:rdrv};}
 
-  function fbZ(sum,sumsq,N){if(N<8)return 0;var m=sum/N,v=sumsq/N-m*m;
-    if(!(v>1e-12))return 0;return clampZ(m/Math.sqrt(v/N));}
+  /* The paired difference is not iid across epochs either: the MBON depression
+     trace and the ring attractor both carry state from one epoch to the next.
+     Same correction, same one-directional floor. */
+  function fbStat(o){
+    if(o.N<8)return {z:0,vif:1};
+    var m=o.sum/o.N,g0=o.sq/o.N-m*m;
+    if(!(g0>1e-12))return {z:0,vif:1};
+    var s2=hacVar(o,g0);
+    return {z:clampZ(m/Math.sqrt(s2/o.N)),vif:s2/g0};
+  }
 
   function fbEpoch(fresh){
     if(fresh.length<2)return;
@@ -479,14 +542,16 @@
     fbStep(FB.sig,ds.pn,ds.ring);
     fbStep(FB.nul,dn.pn,dn.ring);
     var df=FB.nul.mbon-FB.sig.mbon,dr=FB.sig.pva-FB.nul.pva;      // paired differences
-    FBS.N++;FBS.fs+=df;FBS.fss+=df*df;FBS.rs+=dr;FBS.rss+=dr*dr;
-    FBS.famZ=fbZ(FBS.fs,FBS.fss,FBS.N);FBS.ringZ=fbZ(FBS.rs,FBS.rss,FBS.N);
+    hacPush(FBS.fam,df);hacPush(FBS.ring,dr);FBS.N=FBS.fam.N;
+    var fa=fbStat(FBS.fam),fr=fbStat(FBS.ring);
+    FBS.famZ=fa.z;FBS.ringZ=fr.z;FBS.famVif=fa.vif;FBS.ringVif=fr.vif;
     FB.tr.push([FB.sig.mbon,FB.nul.mbon]);if(FB.tr.length>FB.TRACE)FB.tr.shift();
     var mz=Math.abs(FBS.famZ)>=Math.abs(FBS.ringZ)?FBS.famZ:FBS.ringZ;
     if(FBS.N>60&&Math.abs(mz)>3&&Date.now()-(FB.logT||0)>45000){FB.logT=Date.now();
       logLine('fly.brain :: READOUT Z='+(mz>=0?'+':'')+mz.toFixed(2)+' :: STILL CHANCE-COMPATIBLE','a');}}
 
-  FB.wire=fbWire(seed32());FB.map=fbMap(seed32());
+  FB.seedW=seed32();FB.seedM=seed32();
+  FB.wire=fbWire(FB.seedW);FB.map=fbMap(FB.seedM);
   FB.sig=fbBrain();FB.nul=fbBrain();FB.tr=[];
 
   function epoch(){
@@ -506,7 +571,7 @@
         logLine('session :: N='+FULL.N+' Zc='+(sz.z>=0?'+':'')+sz.z.toFixed(2)+' p='+fmtP(sz.z)+(sz.vif>1.1?' vif='+sz.vif.toFixed(2):''));}
     }
   }
-  function glitch(){var w=document.getElementById('wrap');w.classList.remove('glitch');void w.offsetWidth;w.classList.add('glitch');rain.boost=performance.now()+800;}
+  function glitch(){if(!FX.on)return;var w=document.getElementById('wrap');w.classList.remove('glitch');void w.offsetWidth;w.classList.add('glitch');rain.boost=performance.now()+800;}
 
   // ---------- live streams ----------
   function feedArrival(s){s._n=(s._n||0)+1;s._acc=mix(s._acc||(2166136261>>>0),performance.now());if(s.status!=='live')mark(s,1);}
@@ -741,13 +806,18 @@
   function renderLog(){var box=document.getElementById('log'),h='';for(var i=0;i<LOG.length;i++){var l=LOG[i];h+='<div><span class="t">'+l.ts+'</span> <span class="'+l.cls+'">'+l.txt+'</span></div>';}box.innerHTML=h;}
 
   function renderData(){
+    if(document.hidden)return;                     // keep sampling, stop painting
     document.getElementById('sesh').textContent='UPTIME '+clock(Date.now()-T0);
     document.getElementById('tElapsed').textContent=clock(Date.now()-T0);
     var sc=renderSources();
     var nfresh=0;SRC.forEach(function(s){if(s.tier!=='context'&&s._freshTick)nfresh++;});
-    var b=document.getElementById('badge'),bt=document.getElementById('badgeText');b.className='badge live';bt.textContent='LIVE SWARM';
+    var b=document.getElementById('badge'),bt=document.getElementById('badgeText');
+    b.className='badge'+(RATE.paused?'':' live');bt.textContent=RATE.paused?'PAUSED':'LIVE SWARM';
     document.getElementById('nSrc').textContent=nfresh;
     document.getElementById('tSrc').textContent=sc.liveCount+' / '+sc.total;
+    document.getElementById('tEpoch').textContent=RATE.ema?(RATE.ema/1000).toFixed(2)+' s':(EPOCH_MS/1000).toFixed(1)+' s';
+    document.getElementById('tGaps').textContent=RATE.gaps;
+    document.getElementById('tStart').textContent=new Date(T0).toLocaleString();
     var SZ=sessionZ(FULL),Zc=SZ.z;
     document.getElementById('zcVal').textContent=FULL.N>0?((Zc>=0?'+':'')+Zc.toFixed(2)):'\u2013';
     document.getElementById('zcSub').textContent='N='+FULL.N+(SZ.vif>1.05?' \u00b7 vif '+SZ.vif.toFixed(2):' \u00b7 HAC');
@@ -773,22 +843,179 @@
     try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();}catch(e){}
   }
 
+
+  /* ---------- scheduler ----------
+     setInterval is not a clock. A hidden tab is throttled hard (often to once
+     a minute), and a stretched "epoch" is not the thing the statistic claims to
+     count: the arrival arms would fold a minute of events into one draw. So the
+     real spacing is measured, and an epoch that arrives late is DISCARDED rather
+     than counted, with the backlog cleared. Gaps are logged and reported. */
+  var RATE={last:0,ema:0,gaps:0,paused:false};
+  function tick(){
+    var now=Date.now();
+    if(RATE.last){
+      var dt=now-RATE.last;
+      if(dt>EPOCH_MS*4){
+        RATE.gaps++;RATE.last=now;
+        SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});
+        logLine('scheduler :: '+(dt/1000).toFixed(0)+'s GAP · EPOCH DISCARDED','a');
+        return;
+      }
+      RATE.ema=RATE.ema?RATE.ema+.06*(dt-RATE.ema):dt;
+    }
+    RATE.last=now;
+    if(!RATE.paused)epoch();
+  }
+  function setPaused(p){
+    RATE.paused=p;RATE.last=0;
+    SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});
+    var b=document.getElementById('btnPause');
+    b.textContent=p?'▶ Resume':'⏸ Pause';b.className='cbtn'+(p?' off':'');
+    logLine('sampling :: '+(p?'PAUSED':'RESUMED'));
+  }
+
+  /* ---------- session persistence ----------
+     A monitor that forgets on reload is not a monitor. Sufficient statistics
+     only — everything here is a running sum, so the resumed session is
+     numerically identical to one that never stopped. */
+  var SKEY='synchronicity.session.v3';
+  function packAcc(a){var o=packHac(a);o.cEW=a.cEW;o.walk=a.walk.slice(-600);o.pulse=a.pulse.slice(-120);return o;}
+  function unpackAcc(a,o){if(!o)return;unpackHac(a,o);
+    a.cEW=+o.cEW||1;a.walk=(o.walk||[]).map(Number);a.pulse=(o.pulse||[]).map(Number);}
+  function saveState(){
+    try{
+      localStorage.setItem(SKEY,JSON.stringify({v:3,t0:T0,saved:Date.now(),gaps:RATE.gaps,
+        full:packAcc(FULL),phys:packAcc(PHYS),algo:packAcc(ALGO),
+        wire:FB.seedW,map:FB.seedM,fb:{fam:packHac(FBS.fam),ring:packHac(FBS.ring)},
+        arms:SRC.filter(function(s){return s.tier!=='context';}).map(function(s){
+          return {id:s.id,aN:s.aN||0,aS:s.aS||0,aQ:s.aQ||0,aX:s.aX||0,aC:s.aC||0};})}));
+    }catch(e){}
+  }
+  function loadState(){
+    try{
+      var raw=localStorage.getItem(SKEY);if(!raw)return 0;
+      var d=JSON.parse(raw);if(!d||d.v!==3||!d.full||!(d.full.N>0))return 0;
+      unpackAcc(FULL,d.full);unpackAcc(PHYS,d.phys);unpackAcc(ALGO,d.algo);
+      if(d.wire!=null&&d.map!=null){          // same brain, so the resumed readout is the same experiment
+        FB.seedW=d.wire>>>0;FB.seedM=d.map>>>0;FB.wire=fbWire(FB.seedW);FB.map=fbMap(FB.seedM);}
+      if(d.fb){unpackHac(FBS.fam,d.fb.fam);unpackHac(FBS.ring,d.fb.ring);FBS.N=FBS.fam.N;
+        var fa=fbStat(FBS.fam),fr=fbStat(FBS.ring);
+        FBS.famZ=fa.z;FBS.ringZ=fr.z;FBS.famVif=fa.vif;FBS.ringVif=fr.vif;}
+      (d.arms||[]).forEach(function(o){var s=byId[o.id];if(!s||s.tier==='context')return;
+        s.aN=o.aN|0;s.aS=+o.aS||0;s.aQ=+o.aQ||0;s.aX=+o.aX||0;s.aC=o.aC|0;s.aP=null;});
+      T0=+d.t0||Date.now();RATE.gaps=d.gaps|0;
+      return d.full.N;
+    }catch(e){return 0;}
+  }
+  function resetSession(){
+    if(!window.confirm('Discard this session? N='+FULL.N+' epochs and every accumulated statistic will be erased. This cannot be undone.'))return;
+    try{localStorage.removeItem(SKEY);}catch(e){}
+    FULL=makeAcc();PHYS=makeAcc();ALGO=makeAcc();
+    FBS.N=0;hacInit(FBS.fam);hacInit(FBS.ring);FBS.famZ=FBS.ringZ=0;FBS.famVif=FBS.ringVif=1;
+    FB.seedW=seed32();FB.seedM=seed32();FB.wire=fbWire(FB.seedW);FB.map=fbMap(FB.seedM);
+    FB.sig=fbBrain();FB.nul=fbBrain();FB.tr.length=0;
+    SRC.forEach(function(s){if(s.tier!=='context'){s.aN=s.aS=s.aQ=s.aX=s.aC=0;s.aP=null;s.has=false;}});
+    T0=Date.now();RATE.gaps=0;RATE.last=0;LOG.length=0;
+    logLine('session :: RESET · N=0');
+  }
+
+  /* ---------- export ---------- */
+  function dl(name,mime,text){
+    try{
+      var b=new Blob([text],{type:mime}),u=URL.createObjectURL(b),a=document.createElement('a');
+      a.href=u;a.download=name;document.body.appendChild(a);a.click();
+      setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(u);},0);
+      logLine('export :: '+name);
+    }catch(e){logLine('export :: FAILED','a');}
+  }
+  function stamp(){return new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);}
+  function exportCsv(){
+    var w=FULL.walk,n=w.length;
+    if(!n){logLine('export :: NOTHING TO EXPORT','a');return;}
+    var k0=Math.max(0,FULL.N-n),rows=['epoch,walk_cumsum,netvar_c'];
+    for(var i=0;i<n;i++){
+      // netvar is the first difference of the walk; unrecoverable for the first row in view
+      rows.push((k0+i+1)+','+w[i].toFixed(6)+','+(i?(w[i]-w[i-1]+1).toFixed(6):''));
+    }
+    dl('synchronicity-epochs-'+stamp()+'.csv','text/csv',rows.join('\n')+'\n');
+  }
+  function exportJson(){
+    var S=sessionZ(FULL),Sp=sessionZ(PHYS),Sa=sessionZ(ALGO);
+    var out={
+      tool:'SYNCHRONICITY_MACHINE',exported:new Date().toISOString(),
+      session:{startedISO:new Date(T0).toISOString(),uptimeSec:Math.round((Date.now()-T0)/1000),
+        epochNominalMs:EPOCH_MS,epochMeasuredMs:RATE.ema?Math.round(RATE.ema):null,discardedGaps:RATE.gaps},
+      statistic:{note:'Zc is Newey-West corrected; raw assumes independent epochs. vif = variance inflation factor.',
+        full:{N:FULL.N,sumCminus1:FULL.sum,Z:S.z,Zraw:S.raw,vif:S.vif,p:fmtP(S.z)},
+        detectorPhysical:{N:PHYS.N,Z:Sp.z,Zraw:Sp.raw,vif:Sp.vif,p:fmtP(Sp.z)},
+        controlAlgorithmic:{N:ALGO.N,Z:Sa.z,Zraw:Sa.raw,vif:Sa.vif,p:fmtP(Sa.z)},
+        detectorMinusControl:(PHYS.N>=60&&ALGO.N>=60)?(function(){var d=(Sp.z-Sa.z)/Math.SQRT2;return {Z:d,p:fmtP(d)};})():null},
+      flyBrain:{note:'paired differences against a matched-noise twin brain; not part of the statistic above',
+        N:FBS.N,familiarityZ:FBS.famZ,familiarityVif:FBS.famVif,ringZ:FBS.ringZ,ringVif:FBS.ringVif,
+        KC:FB.NKC,claws:FB.CLAW,codingLevel:FB.SPARSE,wedges:FB.NW},
+      arms:SRC.filter(function(s){return s.tier!=='context';}).map(function(s){
+        var g=armDiag(s);
+        return {id:s.id,label:s.label,tier:s.tier,type:s.type,status:s.status,
+          n:g?g.n:0,sdHat:g?g.sd:null,lag1:g?g.r1:null,independenceFlag:g?!!g.bad:false};}),
+      context:SRC.filter(function(s){return s.tier==='context';}).map(function(s){
+        return {id:s.id,label:s.label,status:s.status,last:s.last,ageSec:s.t?Math.round((Date.now()-s.t)/1000):null};}),
+      caveats:['Multiple statistics are reported from one session; do not read the smallest p as if it were the only test.',
+               'Running longer crosses p<0.05 about one session in twenty by chance.',
+               'This measures coincidence, not meaning.']
+    };
+    dl('synchronicity-session-'+stamp()+'.json','application/json',JSON.stringify(out,null,2));
+  }
+
+  /* ---------- presentation effects ----------
+     The rain and the CRT flicker are theatre. They default off when the
+     viewer asks for reduced motion, and they never run while the tab is
+     hidden — the sampling does, because that is the instrument. */
+  var FX={on:true};
+  function setFx(on){
+    FX.on=!!on;
+    var b=document.getElementById('btnMotion');
+    if(b){b.className='cbtn'+(FX.on?'':' off');b.textContent=FX.on?'\u25d0 FX':'\u25cb FX off';}
+    document.documentElement.classList.toggle('nofx',!FX.on);
+    if(!FX.on&&rain.ctx)rain.ctx.clearRect(0,0,rain.w,rain.h);
+  }
+
   // ---------- digital rain ----------
   var rain={cv:null,ctx:null,cols:[],fs:14,w:0,h:0,boost:0,chars:''};
   function buildChars(){var s='';for(var i=0x30A0;i<0x30FB;i++)s+=String.fromCharCode(i);s+='0123456789ABCDEFΦΨΩλΣ<>/\\|=+*';return s;}
   function initRain(){rain.cv=document.getElementById('rain');rain.ctx=rain.cv.getContext('2d');rain.chars=buildChars();sizeRain();}
   function sizeRain(){rain.w=window.innerWidth;rain.h=window.innerHeight;rain.cv.width=rain.w;rain.cv.height=rain.h;rain.fs=Math.max(12,Math.round(rain.w/34));var cols=Math.ceil(rain.w/rain.fs);rain.cols=[];for(var i=0;i<cols;i++)rain.cols[i]=Math.random()*-50;}
-  function stepRain(){var x=rain.ctx;if(!x)return;var bo=performance.now()<rain.boost;x.fillStyle='rgba(0,6,0,'+(bo?0.10:0.085)+')';x.fillRect(0,0,rain.w,rain.h);x.font=rain.fs+'px monospace';
+  function stepRain(){var x=rain.ctx;if(!x||!FX.on||document.hidden)return;var bo=performance.now()<rain.boost;x.fillStyle='rgba(0,6,0,'+(bo?0.10:0.085)+')';x.fillRect(0,0,rain.w,rain.h);x.font=rain.fs+'px monospace';
     for(var i=0;i<rain.cols.length;i++){var ch=rain.chars.charAt((Math.random()*rain.chars.length)|0),px=i*rain.fs,py=rain.cols[i]*rain.fs;x.fillStyle=bo?'#d6ffe0':'#00ff66';if(Math.random()<0.04)x.fillStyle='#d2ffdd';x.fillText(ch,px,py);if(py>rain.h&&Math.random()>0.975)rain.cols[i]=0;else rain.cols[i]+=bo?1.4:0.9;}}
 
   // ---------- boot ----------
-  initRain();buildSources();logLine('synchronicity_machine :: BOOT');logLine('entropy swarm :: SEEDED');
+  var rmq=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
+  setFx(!(rmq&&rmq.matches));
+  if(rmq&&rmq.addEventListener)rmq.addEventListener('change',function(e){setFx(!e.matches);});
+
+  initRain();buildSources();
+  var resumedN=loadState();
+  logLine('synchronicity_machine :: BOOT');
+  if(resumedN)logLine('session :: RESUMED N='+resumedN+' \u00b7 RUNNING SUMS RESTORED');
+  else logLine('entropy swarm :: SEEDED');
   logLine('fly.brain :: CONNECTOME WIRED '+FB.NKC+' KC \u00d7 '+FB.CLAW+' claws');
+
   document.getElementById('motionBtn').addEventListener('click',enableMotion);
+  document.getElementById('btnPause').addEventListener('click',function(){setPaused(!RATE.paused);});
+  document.getElementById('btnCsv').addEventListener('click',exportCsv);
+  document.getElementById('btnJson').addEventListener('click',exportJson);
+  document.getElementById('btnReset').addEventListener('click',resetSession);
+  document.getElementById('btnMotion').addEventListener('click',function(){setFx(!FX.on);});
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden)saveState();
+    else{RATE.last=0;SRC.forEach(function(s){if(s.tier!=='context'){s._n=0;s.aP=null;}});sizeRain();}
+  });
+  window.addEventListener('pagehide',saveState);
+
   startSources();
-  setInterval(epoch,EPOCH_MS);
+  setInterval(tick,EPOCH_MS);
   setInterval(stepRain,42);
   setInterval(renderData,140);
+  setInterval(saveState,10000);
   var rT;window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){sizeRain();try{drawGauge();drawWalk();drawPulse();drawFly();drawMbon();}catch(e){}},150);});
 })();
 </script>
