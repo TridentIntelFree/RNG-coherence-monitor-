@@ -1,0 +1,3 @@
+# debug screenshots from browser verification runs
+*.png
+!favicon*.png
