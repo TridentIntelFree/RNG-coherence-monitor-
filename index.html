@@ -152,6 +152,12 @@
   .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--grndim),var(--grn));transition:width .25s}
   .meter.full i{background:linear-gradient(90deg,var(--grn),var(--bright))}
   .sdout{margin-top:10px;border:1px solid var(--edge);border-radius:5px;background:rgba(0,0,0,.55);padding:10px 11px}
+  .lkstep{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:12px;letter-spacing:.05em;color:var(--bright)}
+  .lknum{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:var(--grndim);color:#000;font-size:11px;font-weight:700;flex:0 0 auto}
+  #lkStr{display:block;height:100%;width:0;background:var(--red);transition:width .2s,background .2s}
+  .lkplain{margin-top:9px;font-size:12.5px;line-height:1.55;word-break:break-word;white-space:pre-wrap}
+  .lkplain .ok{border:1px solid var(--grndim);border-radius:5px;padding:9px 11px;color:var(--txt);box-shadow:inset 0 0 22px -14px var(--grn)}
+  .lkplain .bad{border:1px solid var(--edge);border-radius:5px;padding:9px 11px;color:var(--amber)}
   .sdout .sk{font-size:9px;letter-spacing:.13em;color:var(--faint);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
   .sdval{font-size:12.5px;color:var(--bright);word-break:break-all;line-height:1.6;margin-top:5px;user-select:all;
     font-variant-ligatures:none;text-shadow:0 0 8px rgba(0,255,102,.25)}
@@ -309,6 +315,40 @@
     <div id="sources"></div>
   </div>
 
+  <div class="term panel" id="lkPanel">
+    <div class="ptop"><div class="ptitle">> LOCKER</div><div class="pmeta">encrypt a note with a password · offline</div></div>
+    <div class="hint" style="margin-top:2px">The simple path: <b>lock</b> a secret with a password, <b>unlock</b> it with the same password. AES-256-GCM, key stretched from your password by PBKDF2 (150k rounds). Everything stays in this tab. For a full key, a two-party channel, or backups, use the panels below.</div>
+
+    <div class="lkstep"><span class="lknum">1</span> Lock a secret</div>
+    <textarea id="lkSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Type or paste the secret you want to protect…"></textarea>
+    <div class="sdf" style="margin-top:8px">
+      <input id="lkPw" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
+      <button id="lkGen" class="cbtn" type="button" title="Generate a strong random password">🎲 strong</button>
+      <button id="lkShow" class="cbtn" type="button" title="Show / hide">👁</button>
+    </div>
+    <div class="meter" id="lkStrWrap" style="margin-top:7px"><i id="lkStr"></i></div>
+    <div class="hint" id="lkStrNote">Password strength shows here. A generated password is safest; a weak one is what the panels below exist to crack.</div>
+    <div class="ctl" style="margin-top:9px">
+      <button id="lkLock" class="cbtn" type="button">🔒 Lock</button>
+      <button id="lkCopy" class="cbtn" type="button">⧉ Copy</button>
+      <button id="lkSave" class="cbtn" type="button">⭳ Save .txt</button>
+    </div>
+    <textarea id="lkOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="The locked blob (LOCK…) appears here. Share it however you like — it is meaningless without the password."></textarea>
+
+    <div class="lkstep" style="margin-top:14px"><span class="lknum">2</span> Unlock a blob</div>
+    <textarea id="lkBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a locked blob here…"></textarea>
+    <div class="sdf" style="margin-top:8px">
+      <input id="lkPw2" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
+      <button id="lkShow2" class="cbtn" type="button" title="Show / hide">👁</button>
+      <button id="lkUnlock" class="cbtn" type="button">🔓 Unlock</button>
+    </div>
+    <div id="lkPlain" class="lkplain"></div>
+
+    <div class="danger-note">
+      <b>Your password is the whole of your security.</b> The cipher is strong; a guessable password is not, and PBKDF2 only slows a guesser, it does not stop one. Use the <b>🎲 strong</b> button and save what it gives you, or accept that a weak password is crackable — the <b>KEY.RECOVERY</b> panel below will show you exactly how fast. Runs entirely in this tab; nothing is stored or sent, so a blob you lose the password to is gone for good.
+    </div>
+  </div>
+
   <div class="term panel" id="seedPanel">
     <canvas id="seedRain" aria-hidden="true"></canvas>
     <div class="ptop"><div class="ptitle">> SEED.EXTRACTOR</div><div class="pmeta"><span class="net" id="netState"><i></i><span>checking…</span></span></div></div>
@@ -410,7 +450,7 @@
         <li>Generate a seed above, then press <b>Use current seed</b> — that becomes the channel key.</li>
         <li>Give your correspondent the key <b>through a different channel</b> than the messages. Read it aloud, hand it over in person, use a separate app. Never send both down the same pipe.</li>
         <li>Check that your <b>fingerprints match</b>. The fingerprint is derived from the key but does not reveal it, so it is safe to compare out loud.</li>
-        <li>Type a message, press <b>Encrypt</b>, and send the <code>SYNC1.…</code> blob however you like — it is meaningless without the key.</li>
+        <li>Type a message, press <b>Encrypt</b>, and send the <code>SYNC3.…</code> blob however you like — it is meaningless without the key.</li>
       </ol>
     </div>
 
@@ -2795,6 +2835,89 @@
     document.getElementById('cnGateStage').style.display='none';document.getElementById('cnResStage').style.display='none';}
 
 
+  /* ---------- LOCKER: the streamlined lock / unlock path ----------
+     One password, symmetric. Reuses the SYNCPW1 container (PBKDF2-SHA-256 150k
+     -> AES-256-GCM) so what you lock here is exactly what the KEY.RECOVERY panel
+     can try to crack -- an honest loop: a strong password defeats it, a weak one
+     does not. The blob is prefixed LOCK1 for humans but is byte-identical to
+     SYNCPW1 and parses either way. */
+  function lkGenPw(){
+    var AZ='abcdefghjkmnpqrstuvwxyz23456789';                  // 30 unambiguous chars ~4.9 bits each
+    var n=20,b=new Uint8Array(n),o='',i;crypto.getRandomValues(b);
+    for(i=0;i<n;i++)o+=AZ[b[i]%AZ.length];b.fill(0);
+    return o.replace(/(.{5})/g,'$1-').replace(/-$/,'');        // grouped for reading; dashes are ignored on unlock
+  }
+  function lkEntropyBits(pw){
+    if(!pw)return 0;
+    var sets=0;
+    if(/[a-z]/.test(pw))sets+=26; if(/[A-Z]/.test(pw))sets+=26;
+    if(/[0-9]/.test(pw))sets+=10; if(/[^a-zA-Z0-9]/.test(pw))sets+=20;
+    var uniq={},u=0,i;for(i=0;i<pw.length;i++)if(!uniq[pw[i]]){uniq[pw[i]]=1;u++;}
+    var eff=Math.min(pw.length, u+ (pw.length-u)*0.4);          // repeats add little
+    var bits=eff*Math.log2(Math.max(2,sets));
+    // penalties for the patterns the smasher eats first
+    if(/^\d+$/.test(pw))bits=Math.min(bits, Math.log2(Math.pow(10,pw.length)));   // pure digits
+    if(/^(.)\1+$/.test(pw))bits=Math.min(bits,6);                                 // repdigit/char
+    return Math.round(bits);
+  }
+  function lkStrengthUpdate(){
+    var pw=document.getElementById('lkPw').value,bits=lkEntropyBits(pw);
+    var pct=Math.max(2,Math.min(100,bits/1.28));               // 128 bits => full
+    var col=bits<40?'var(--red)':bits<64?'var(--amber)':'var(--grn)';
+    var bar=document.getElementById('lkStr');bar.style.width=pct+'%';bar.style.background=col;
+    var verdict=bits<40?'weak — crackable':bits<64?'ok — fine for casual notes':bits<90?'strong':'very strong';
+    var note=document.getElementById('lkStrNote');
+    if(!pw){note.innerHTML='Password strength shows here. A generated password is safest; a weak one is what the panels below exist to crack.';return;}
+    note.innerHTML='~<b>'+bits+' bits</b> · '+verdict+
+      (bits<40?' <span style="color:var(--amber)">— the KEY.RECOVERY panel below would likely find this.</span>':
+       bits>=90?' <span style="color:var(--grn)">— beyond any brute force.</span>':'');
+  }
+  function lkNormPw(pw){return String(pw).replace(/-/g,'');}    // dashes are cosmetic grouping only
+  function lkDecrypt(blob,pw){
+    var b=krParseBlob(blob);if(!b)return Promise.reject(new Error('not a valid locked blob'));
+    return krPbkdf2Key(lkNormPw(pw),b.salt,b.iters).then(function(key){
+      return crypto.subtle.decrypt({name:'AES-GCM',iv:b.nonce},key,b.body);
+    }).then(function(ptb){return new TextDecoder().decode(new Uint8Array(ptb));});
+  }
+  function lkLock(){
+    var secret=document.getElementById('lkSecret').value,pw=document.getElementById('lkPw').value;
+    if(!secret){logLine('locker :: NOTHING TO LOCK','a');return;}
+    if(!pw){logLine('locker :: SET A PASSWORD FIRST','a');document.getElementById('lkPw').focus();return;}
+    document.getElementById('lkLock').disabled=true;
+    krMakeBlob(lkNormPw(pw),secret).then(function(blob){
+      var human=blob.replace(/^SYNCPW1\./,'LOCK1.');
+      document.getElementById('lkOut').value=human;
+      document.getElementById('lkLock').disabled=false;
+      logLine('locker :: LOCKED '+secret.length+' chars');
+    }).catch(function(e){document.getElementById('lkLock').disabled=false;logLine('locker :: LOCK FAILED','a');});
+  }
+  function lkUnlock(){
+    var blob=document.getElementById('lkBlob').value.trim(),pw=document.getElementById('lkPw2').value;
+    var out=document.getElementById('lkPlain');
+    if(!blob){out.innerHTML='<div class="bad">Paste a locked blob first.</div>';return;}
+    if(!pw){out.innerHTML='<div class="bad">Enter the password.</div>';return;}
+    // accept either LOCK1. or SYNCPW1.
+    var norm=blob.replace(/^LOCK1\./,'SYNCPW1.');
+    document.getElementById('lkUnlock').disabled=true;
+    lkDecrypt(norm,pw).then(function(pt){
+      out.innerHTML='<div class="ok">'+lkEsc(pt)+'</div>';
+      document.getElementById('lkUnlock').disabled=false;
+      logLine('locker :: UNLOCKED');
+    }).catch(function(){
+      out.innerHTML='<div class="bad">Could not unlock — wrong password, or the blob was altered. AES-GCM refuses both the same way.</div>';
+      document.getElementById('lkUnlock').disabled=false;
+      logLine('locker :: UNLOCK FAILED','a');
+    });
+  }
+  function lkEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function lkSaveTxt(){
+    var v=document.getElementById('lkOut').value;if(!v){logLine('locker :: LOCK SOMETHING FIRST','a');return;}
+    try{var blob=new Blob([v],{type:'text/plain'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=u;a.download='locked-'+Date.now()+'.txt';document.body.appendChild(a);a.click();
+      document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},1000);
+      logLine('locker :: SAVED .txt');}catch(e){logLine('locker :: SAVE UNSUPPORTED','a');}
+  }
+
   /* ══════════════════════════════════════════════════════════════════════════
      KEY.RECOVERY — a real dictionary/brute-force attacker.
 
@@ -3921,6 +4044,20 @@
       document.getElementById('kwTarget').value=kwMakeBlob(gentype,param,pt);kwDetect();
       logLine('keyspace :: SYNCWK1 blob built ('+v+')');});
     document.getElementById('kwSmash').addEventListener('click',kwSmashStart);
+    (function(){
+      var pw=document.getElementById('lkPw'),pw2=document.getElementById('lkPw2');
+      document.getElementById('lkGen').addEventListener('click',function(){
+        pw.value=lkGenPw();pw.type='text';lkStrengthUpdate();});
+      pw.addEventListener('input',lkStrengthUpdate);
+      document.getElementById('lkShow').addEventListener('click',function(){pw.type=pw.type==='password'?'text':'password';});
+      document.getElementById('lkShow2').addEventListener('click',function(){pw2.type=pw2.type==='password'?'text':'password';});
+      document.getElementById('lkLock').addEventListener('click',lkLock);
+      document.getElementById('lkUnlock').addEventListener('click',lkUnlock);
+      document.getElementById('lkCopy').addEventListener('click',function(){
+        var v=document.getElementById('lkOut').value;if(v&&navigator.clipboard)navigator.clipboard.writeText(v).then(function(){logLine('locker :: COPIED');});});
+      document.getElementById('lkSave').addEventListener('click',lkSaveTxt);
+      lkStrengthUpdate();
+    })();
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
