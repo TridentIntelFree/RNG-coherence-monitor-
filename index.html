@@ -2247,7 +2247,7 @@
      with "SYNC1" bound in as additional authenticated data.
      ══════════════════════════════════════════════════════════════════════════ */
   /* ══════════════════════════════════════════════════════════════════════════
-     KEYED.CHANNEL v2 — SYNC2 envelope.
+     KEYED.CHANNEL v3 — SYNC3 envelope.
 
      The cryptography here is deliberately boring: AES-256-GCM and HKDF-SHA-256,
      both standard, neither invented here. The symmetric ratchet is Signal's
@@ -2257,12 +2257,25 @@
      What IS new is that every message carries a machine-readable label saying
      exactly which guarantees apply to it -- and, more usefully, which do not.
 
-     Envelope:  SYNC2.<b64url( ver | role | ctr(4) | commit(8) | nonce(12) | ct+tag )>
-     AAD:       "SYNC2" | ver | role | ctr | commit
+     Envelope:  SYNC3.<b64url( ver | role | ctr(4) | layers | epoch(8)
+                                    | commit(16) | nonce(12) | ct+tag )>
+     AAD:       "SYNC3" | ver | role | ctr | layers | epoch | commit
+
+     The EPOCH is 8 random bytes drawn when the channel is keyed and sent with
+     every message. Without it the chain was a pure function of the typed key,
+     so reloading the page and retyping the same key rebuilt message key #0 --
+     and with it every message key the session had already "destroyed". The
+     ratchet's whole claim was void across a reload. The epoch makes each
+     keying an independent chain: same typed key, different session, disjoint
+     keys. The receiver derives the peer's chain from the epoch in the header,
+     so this costs 8 bytes and no handshake. Retired epochs are remembered and
+     refused, or an attacker could replay a whole old session by rewinding the
+     receiver to a chain it had already finished with.
      ══════════════════════════════════════════════════════════════════════════ */
-  var CHAN={msgs:[],root:null,role:0,txChain:null,rxChain:null,txIdx:0,rxIdx:0,destroyed:0,lastLabel:null};
+  var CHAN={msgs:[],root:null,role:0,txChain:null,rxChain:null,txIdx:0,rxIdx:0,destroyed:0,lastLabel:null,
+            epoch:null,rxEpoch:null,rxSeen:[]};
   var SYNCSALT=null;
-  function chSalt(){ if(!SYNCSALT)SYNCSALT=new TextEncoder().encode('SYNCHRONICITY/channel/v2');return SYNCSALT; }
+  function chSalt(){ if(!SYNCSALT)SYNCSALT=new TextEncoder().encode('SYNCHRONICITY/channel/v3');return SYNCSALT; }
   function fromB64(s){
     s=String(s).replace(/-/g,'+').replace(/_/g,'/').replace(/\s+/g,'');
     while(s.length%4)s+='=';
@@ -2392,20 +2405,28 @@
      because the key that could is gone -- including from your own machine. */
   function chReset(raw){
     chWipeKeys();
-    CHAN.root=kdf(raw,'SYNC2/root');
+    CHAN.root=kdf(raw,'SYNC3/root');
     CHAN.role=+document.getElementById('chRole').value|0;
-    CHAN.txChain=kdf(CHAN.root, CHAN.role===0?'SYNC2/chainA':'SYNC2/chainB');
-    CHAN.rxChain=kdf(CHAN.root, CHAN.role===0?'SYNC2/chainB':'SYNC2/chainA');
+    // the epoch is what makes this keying distinct from every other keying of
+    // the same typed key -- see the envelope note above
+    CHAN.epoch=new Uint8Array(8);crypto.getRandomValues(CHAN.epoch);
+    CHAN.txChain=kdf(cat([CHAN.root,CHAN.epoch]), CHAN.role===0?'SYNC3/chainA':'SYNC3/chainB');
+    CHAN.rxChain=null;CHAN.rxEpoch=null;CHAN.rxSeen=[];   // built when the peer first speaks
     CHAN.txIdx=0;CHAN.rxIdx=0;CHAN.destroyed=0;
     chRenderRatchet();}
   function chWipeKeys(){
-    ['root','txChain','rxChain'].forEach(function(k){ if(CHAN[k]&&CHAN[k].fill)CHAN[k].fill(0); CHAN[k]=null; });
+    ['root','txChain','rxChain','epoch'].forEach(function(k){ if(CHAN[k]&&CHAN[k].fill)CHAN[k].fill(0); CHAN[k]=null; });
+    CHAN.rxEpoch=null;CHAN.rxSeen=[];
     CHAN.txIdx=0;CHAN.rxIdx=0;CHAN.destroyed=0;}
-  function msgKeyOf(chain){ return kdf(chain,'SYNC2/msg'); }
-  function advance(chain){ var nx=kdf(chain,'SYNC2/chain'); chain.fill(0); return nx; }
+  function msgKeyOf(chain){ return kdf(chain,'SYNC3/msg'); }
+  function advance(chain){ var nx=kdf(chain,'SYNC3/chain'); chain.fill(0); return nx; }
 
   function aesKey(mk){ return crypto.subtle.importKey('raw',mk,{name:'AES-GCM'},false,['encrypt','decrypt']); }
-  function commitOf(mk){ return hmac256(mk,TE.encode('SYNC2/commit')).slice(0,8); }
+  /* 128-bit, not 64. A commitment truncated to 8 bytes only costs an attacker
+     2^32 work to collide, and the whole point of committing is to stop one
+     ciphertext opening under two keys. 16 bytes puts that back out of reach. */
+  var COMMITLEN=16;
+  function commitOf(mk){ return hmac256(mk,TE.encode('SYNC3/commit')).slice(0,COMMITLEN); }
 
   var PADBLOCK=64;                     // hide "yes" from "here are the details"
   function padPlain(bytes){
@@ -2427,12 +2448,15 @@
      guess what it is holding. */
   function chLabel(ctr,role,extra){
     return Object.assign({
-      envelope:'SYNC2', cipher:'AES-256-GCM', kdf:'HKDF-SHA-256 (RFC 5869)',
-      forwardSecrecy:true,
+      envelope:'SYNC3', cipher:'AES-256-GCM', kdf:'HKDF-SHA-256 (RFC 5869)',
+      keyCommitment:'HMAC-SHA-256, 128-bit, covers the message key',
+      sessionEpoch:CHAN.epoch?toHex(CHAN.epoch):null,
+      forwardSecrecy:'session-scoped',
+      forwardSecrecyMeans:'message keys already used are overwritten in memory, so a later compromise of this tab cannot reopen earlier messages in this session',
+      forwardSecrecyDoesNotMean:'protection from the root key. Anyone holding the typed key can re-derive this entire session from its epoch, which travels in cleartext in the header. Do not treat this as Signal-grade forward secrecy: there is no DH ratchet and no key that expires on its own.',
       ratchetIndex:ctr,
       keysDestroyed:CHAN.destroyed,
-      meaning:'every message before index '+ctr+' is unrecoverable by anyone, including the sender',
-      replayProtection:'strictly increasing counter, bound into the AAD',
+      replayProtection:'strictly increasing counter bound into the AAD, plus refusal of any epoch already retired',
       keyCommitment:'8-byte HMAC-SHA-256 over the message key, verified before decryption',
       lengthPadding:PADBLOCK+'-byte buckets',
       role:role===0?'A':'B',
@@ -2462,7 +2486,9 @@
     h+='<span class="rk live" title="current sending key '+total+'">◉</span>';
     el.innerHTML='<div class="ratchet">'+h+'</div>'+
       '<div class="hint">Sending key <b>#'+total+'</b> · <b>'+CHAN.destroyed+'</b> key'+(CHAN.destroyed===1?'':'s')+
-      ' destroyed. Everything sent before now is unreadable even to you — the key that could open it no longer exists anywhere.</div>';}
+      ' destroyed · session epoch <b>'+(CHAN.epoch?toHex(CHAN.epoch).slice(0,8):'—')+'</b>.'+
+      ' Every message key used so far has been overwritten in memory, so nothing sent earlier in this session can be reopened from this tab.</div>'+
+      '<div class="hint">Being exact, because the usual phrasing overclaims: this is forward secrecy <b>against a later compromise of this tab</b>, not against the key itself. <b>Anyone still holding the key you typed can rebuild this whole session from scratch.</b> That is what the epoch fixes and does not fix — re-keying now draws a new epoch, so a fresh session is cryptographically disjoint from this one; but the typed key remains the root of both. The only secret that ever really expires is one nobody wrote down.</div>';}
 
   function chEncrypt(){
     if(!chHasCrypto())return;
@@ -2474,15 +2500,16 @@
     if(!msg){logLine('channel :: NOTHING TO ENCRYPT','a');return;}
     var ctr=CHAN.txIdx, role=CHAN.role;
     var mk=msgKeyOf(CHAN.txChain), commit=commitOf(mk);
-    var hdr=new Uint8Array(7);
-    hdr[0]=2;hdr[1]=role;
+    var nL=Math.max(0,Math.min(MAXLAYERS,(+document.getElementById('chLayers').value|0)));
+    // every byte of the header is authenticated: version, role, counter, layer
+    // count and epoch all sit in the AAD, so none of them can be edited in flight
+    var hdr=new Uint8Array(15);
+    hdr[0]=3;hdr[1]=role;
     hdr[2]=(ctr>>>24)&255;hdr[3]=(ctr>>>16)&255;hdr[4]=(ctr>>>8)&255;hdr[5]=ctr&255;
-    var aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    hdr[6]=nL;hdr.set(CHAN.epoch,7);
+    var aad=cat([TE.encode('SYNC3'),hdr,commit]);
     var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
     var pt=padPlain(TE.encode(msg));
-    var nL=Math.max(0,Math.min(MAXLAYERS,(+document.getElementById('chLayers').value|0)));
-    hdr[1]=role;hdr[6]=nL;                            // layer count is authenticated
-    aad=cat([TE.encode('SYNC2'),hdr,commit]);
     var plan=nL?layerPlan(CHAN.txChain,nL):[];
     aesKey(mk).then(function(ck){
       return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,pt)
@@ -2502,10 +2529,10 @@
           return body;});});
     }).then(function(body){
       pt.fill(0);planWipe(plan);mk.fill(0);
-      document.getElementById('chBlob').value='SYNC2.'+toB64(cat([hdr,commit,nonce,body]));
+      document.getElementById('chBlob').value='SYNC3.'+toB64(cat([hdr,commit,nonce,body]));
       document.getElementById('chMsg').value='';
       CHAN.txChain=advance(CHAN.txChain);CHAN.txIdx++;CHAN.destroyed++;
-      var lab=chLabel(ctr,role,{direction:'sent',bytes:body.length+27,
+      var lab=chLabel(ctr,role,{direction:'sent',bytes:body.length+43,
         layerCount:nL+1,
         layers:'AES-256-GCM (inner, authenticated) + '+nL+' self-inverse keystream layer'+(nL===1?'':'s'),
         distinctAlgorithmFamilies:Math.min(3,1+Math.min(nL,2)),
@@ -2526,32 +2553,52 @@
     if(!CHAN.root)chReset(raw);
     raw.fill(0);
     var txt=(document.getElementById('chBlob').value||'').trim();
-    var m=txt.match(/SYNC2\.([A-Za-z0-9\-_=]+)/);
-    if(!m){logLine('channel :: NO SYNC2 ENVELOPE FOUND','a');
-      chPush('err','No SYNC2 envelope here. Older SYNC1 messages cannot be read by this version — the ratchet changed the format.',Date.now());return;}
+    var m=txt.match(/SYNC3\.([A-Za-z0-9\-_=]+)/);
+    if(!m){logLine('channel :: NO SYNC3 ENVELOPE FOUND','a');
+      chPush('err','No SYNC3 envelope here. SYNC1 and SYNC2 messages cannot be read by this version — the ratchet was keyed per-session and the commitment widened, so the format changed.',Date.now());return;}
     var blob;
     try{blob=fromB64(m[1]);}catch(e){chPush('err','Malformed envelope.',Date.now());return;}
-    if(blob.length<7+8+12+16){chPush('err','Envelope too short to be real.',Date.now());return;}
-    if(nL<0||nL>MAXLAYERS){chPush('err','Layer count '+nL+' is out of range.',Date.now());return;}
+    if(blob.length<15+COMMITLEN+12+16){chPush('err','Envelope too short to be real.',Date.now());return;}
     var ver=blob[0],role=blob[1]&0x7f,nL=blob[6]|0;
     var ctr=(blob[2]<<24|blob[3]<<16|blob[4]<<8|blob[5])>>>0;
-    if(ver!==2){chPush('err','Unknown envelope version '+ver+'.',Date.now());return;}
+    if(ver!==3){chPush('err','Unknown envelope version '+ver+'.',Date.now());return;}
+    // this check used to read nL before it was assigned, so it never fired.
+    // var-hoisting made it silently dead rather than an error.
+    if(nL<0||nL>MAXLAYERS){chPush('err','Layer count '+nL+' is out of range (0-'+MAXLAYERS+').',Date.now());return;}
     if(role===CHAN.role){
       chPush('err','This message was sent by someone using the SAME role as you. One of you must switch between A and B — otherwise you would both be encrypting on the same chain.',Date.now());return;}
+    /* ---- peer session epoch ----
+       A different epoch means the peer re-keyed, so their chain restarts at 0.
+       A RETURN to an epoch already retired is refused: without that, anyone
+       could rewind the receiver to a finished chain and replay the whole
+       session back at it. */
+    var eh=toHex(blob.slice(7,15));
+    if(CHAN.rxEpoch!==eh){
+      if(CHAN.rxSeen.indexOf(eh)>=0){
+        chPush('err','This message belongs to a peer session that has already ended (epoch '+eh.slice(0,8)+'). Refusing to rewind to a chain that was finished with — that is how a whole conversation gets replayed at you.',Date.now());
+        logLine('channel :: RETIRED EPOCH REFUSED '+eh.slice(0,8),'a');return;}
+      if(CHAN.rxChain){CHAN.rxChain.fill(0);CHAN.rxSeen.push(CHAN.rxEpoch);}
+      CHAN.rxEpoch=eh;
+      CHAN.rxChain=kdf(cat([CHAN.root,blob.slice(7,15)]),
+                       CHAN.role===0?'SYNC3/chainB':'SYNC3/chainA');
+      CHAN.rxIdx=0;
+      logLine('channel :: PEER SESSION '+eh.slice(0,8)+' — FRESH CHAIN');}
     if(ctr<CHAN.rxIdx){
       chPush('err','Replay or out-of-order: message #'+ctr+' arrived but this channel has already moved past it (now expecting #'+CHAN.rxIdx+'). The key that could read it has been destroyed. This is forward secrecy working, not a fault.',Date.now());
       logLine('channel :: REPLAY REJECTED #'+ctr,'a');return;}
     if(ctr-CHAN.rxIdx>1000){chPush('err','Message #'+ctr+' is more than 1000 ahead; refusing to fast-forward that far.',Date.now());return;}
-    var commit=blob.slice(7,15),nonce=blob.slice(15,27),body=blob.slice(27);
+    var commit=blob.slice(15,15+COMMITLEN),
+        nonce=blob.slice(15+COMMITLEN,27+COMMITLEN),
+        body=blob.slice(27+COMMITLEN);
     var skipped=ctr-CHAN.rxIdx,chain=CHAN.rxChain,i;
     for(i=0;i<skipped;i++){chain=advance(chain);CHAN.destroyed++;}
     var mk=msgKeyOf(chain),expect=commitOf(mk),ok=true;
-    for(i=0;i<8;i++)if(expect[i]!==commit[i])ok=false;
+    for(i=0;i<COMMITLEN;i++)if(expect[i]!==commit[i])ok=false;   // no early exit: constant time
     if(!ok){
       CHAN.rxChain=chain;mk.fill(0);
       chPush('err','Key commitment failed at message #'+ctr+'. Either the key is wrong or this ciphertext was built for a different key. AES-GCM alone would not have caught this cleanly — a ciphertext can decrypt validly under two different keys, which is exactly what the commitment closes.',Date.now());
       logLine('channel :: COMMITMENT MISMATCH #'+ctr,'a');return;}
-    var hdr=blob.slice(0,7),aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    var hdr=blob.slice(0,15),aad=cat([TE.encode('SYNC3'),hdr,commit]);
     if(nL){var plan=layerPlan(chain,nL);body=stackPeel(plan,nonce,body);planWipe(plan);}
     aesKey(mk).then(function(ck){
       return crypto.subtle.decrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,body);

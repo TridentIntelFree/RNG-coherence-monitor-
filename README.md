@@ -188,8 +188,24 @@ something weaker.
 fingerprints first: derived from the key, reveals nothing about it, safe to read
 aloud. Matching fingerprints mean matching keys.
 
-⚠️ Not a secure messenger. No forward secrecy — a leaked key opens every past
-message. No sender identity: anyone with the key can forge. Replays undetected.
+⚠️ **Still not a secure messenger**, and the precise shape of that matters more
+than the warning:
+
+- **Forward secrecy is session-scoped, not Signal-grade.** Used message keys are
+  overwritten, so a later compromise of the tab cannot reopen earlier messages
+  *from this session*. But the root is the key you typed, and the session epoch
+  travels in cleartext in the header — anyone still holding that key can rebuild
+  the whole session. There is no DH ratchet. The only secret that really expires
+  is one nobody wrote down.
+- **No sender identity.** Anyone holding the key can write messages that look
+  like yours. The role byte separates the two chains; it does not authenticate
+  anybody.
+- **Replays are rejected**, by a strictly increasing counter bound into the AAD
+  and by refusing any session epoch already retired. Out-of-order delivery is
+  permanently unreadable, by design.
+- **Metadata leaks**: size bucket (64-byte granularity), timing, and the fact
+  that you are talking at all.
+
 Use Signal for real conversations. Use this to hand someone a note with no server
 in the middle, and rotate keys freely.
 
