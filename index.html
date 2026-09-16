@@ -389,9 +389,11 @@
     </div>
     <div class="fp" id="chFp"><span>fingerprint</span> —</div>
     <div class="sdf">
-      <label><input type="checkbox" id="chCascade" style="accent-color:var(--grn);width:14px;height:14px;vertical-align:-2px"> Stack a second cipher</label>
-      <span class="hint" style="margin:0;flex:1">ChaCha20 over AES-256-GCM, independent keys, both standard. Survives one algorithm being broken; doubles the code that has to be right. Off by default because AES is not the weak link here.</span>
+      <label for="chLayers">Extra layers</label>
+      <input id="chLayers" type="range" min="0" max="100" value="1" step="1" style="flex:1;min-width:120px;accent-color:var(--grn)">
+      <span id="chLayersN" class="sdin" style="flex:0 0 auto;min-width:54px;text-align:center">1</span>
     </div>
+    <div class="hint" id="chLayersNote"></div>
     <div class="stage">ratchet <b>· keys destroyed as they are used</b></div>
     <div id="chRatchet"></div>
 
@@ -2144,6 +2146,76 @@
   var TE=new TextEncoder();
   function kdf(key,label,len){ return hkdf(key,chSalt(),TE.encode(label),len||32); }
 
+  /* ══════════════════════════════════════════════════════════════════════════
+     DEEP STACK — 1 to 100 cipher layers.
+
+     Be clear about what this is: past the second layer it adds NO cryptographic
+     strength. Two independent layers survive one algorithm being broken; three
+     would require two to break at once, which has never happened. This exists
+     as an experiment in composing many layers RELIABLY, which is a real and
+     interesting engineering problem, and it is labelled as such.
+
+     Four choices make a hundred layers as safe as one:
+
+       1. Every outer layer is a keystream XOR, which is SELF-INVERSE. Encrypt
+          and decrypt run the identical code path, so an encrypt/decrypt
+          mismatch is not merely unlikely, it is unrepresentable.
+       2. The stack is round-trip verified in process before anything is
+          emitted. A silent corruption becomes a loud local refusal.
+       3. Every layer key is HKDF'd under its own label, so key reuse is
+          impossible by construction rather than by care.
+       4. Only primitives verified against published vectors are used:
+          AES-256-GCM (WebCrypto), ChaCha20 (RFC 8439), HMAC-SHA-256 (RFC 4231).
+
+     Genuine algorithm families: three. Layers beyond that repeat them under
+     independent keys. Said plainly rather than implied away.
+     ══════════════════════════════════════════════════════════════════════════ */
+  var MAXLAYERS=100;
+  var LAYER_ALGOS=['chacha20','hmac-ctr'];        // self-inverse keystreams
+
+  /* HMAC-SHA-256 in counter mode (NIST SP 800-108) used as a stream cipher. */
+  function hmacStream(key,nonce,len){
+    var out=new Uint8Array(len),off=0,ctr=0,blk,n,c4=new Uint8Array(4);
+    while(off<len){
+      c4[0]=(ctr>>>24)&255;c4[1]=(ctr>>>16)&255;c4[2]=(ctr>>>8)&255;c4[3]=ctr&255;
+      blk=hmac256(key,cat([nonce,c4]));
+      n=Math.min(32,len-off);
+      out.set(blk.subarray(0,n),off);
+      blk.fill(0);off+=n;ctr++;}
+    return out;}
+
+  /** One self-inverse layer. Applying it twice with the same key is identity. */
+  function layerXor(algo,key,nonce,data){
+    if(algo==='chacha20')return chacha20(key,nonce.subarray(0,12),1,data);
+    var ks=hmacStream(key,nonce,data.length),out=new Uint8Array(data.length),i;
+    for(i=0;i<data.length;i++)out[i]=data[i]^ks[i];
+    ks.fill(0);return out;}
+
+  /** Deterministic per-message schedule: both sides derive it, nothing is sent. */
+  function layerPlan(chain,count){
+    var seed=kdf(chain,'SYNC3/schedule',Math.max(32,count)),plan=[],i;
+    for(i=0;i<count;i++)plan.push({
+      algo:LAYER_ALGOS[seed[i]%LAYER_ALGOS.length],
+      key:kdf(chain,'SYNC3/L'+i+'/'+LAYER_ALGOS[seed[i]%LAYER_ALGOS.length])});
+    seed.fill(0);return plan;}
+  function planWipe(plan){plan.forEach(function(L){L.key.fill(0);});}
+
+  /** Apply the stack outward, or peel it inward. Same operation either way. */
+  function stackApply(plan,nonce,data){
+    var cur=data,i,nn=new Uint8Array(16);
+    for(i=0;i<plan.length;i++){
+      nn.set(nonce.subarray(0,12));
+      nn[12]=(i>>>24)&255;nn[13]=(i>>>16)&255;nn[14]=(i>>>8)&255;nn[15]=i&255;
+      cur=layerXor(plan[i].algo,plan[i].key,nn,cur);}
+    return cur;}
+  function stackPeel(plan,nonce,data){
+    var cur=data,i,nn=new Uint8Array(16);
+    for(i=plan.length-1;i>=0;i--){
+      nn.set(nonce.subarray(0,12));
+      nn[12]=(i>>>24)&255;nn[13]=(i>>>16)&255;nn[14]=(i>>>8)&255;nn[15]=i&255;
+      cur=layerXor(plan[i].algo,plan[i].key,nn,cur);}
+    return cur;}
+
   /* ---------- the ratchet ----------
      After every message the chain key is replaced by its own hash and the old
      one is zeroed. A key that leaks tomorrow cannot open anything sent today,
@@ -2232,32 +2304,45 @@
     if(!msg){logLine('channel :: NOTHING TO ENCRYPT','a');return;}
     var ctr=CHAN.txIdx, role=CHAN.role;
     var mk=msgKeyOf(CHAN.txChain), commit=commitOf(mk);
-    var hdr=new Uint8Array(6);
+    var hdr=new Uint8Array(7);
     hdr[0]=2;hdr[1]=role;
     hdr[2]=(ctr>>>24)&255;hdr[3]=(ctr>>>16)&255;hdr[4]=(ctr>>>8)&255;hdr[5]=ctr&255;
     var aad=cat([TE.encode('SYNC2'),hdr,commit]);
     var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
     var pt=padPlain(TE.encode(msg));
-    var casc=document.getElementById('chCascade').checked;
-    hdr[1]=role|(casc?0x80:0);                        // high bit records the cascade
+    var nL=Math.max(0,Math.min(MAXLAYERS,(+document.getElementById('chLayers').value|0)));
+    hdr[1]=role;hdr[6]=nL;                            // layer count is authenticated
     aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    var plan=nL?layerPlan(CHAN.txChain,nL):[];
     aesKey(mk).then(function(ck){
-      return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,pt);
-    }).then(function(ctb){
-      pt.fill(0);
-      var body=new Uint8Array(ctb);
-      if(casc){                                        // outer layer, independent key
-        var ck2=kdf(CHAN.txChain,'SYNC2/chacha'),cn=nonce.slice(0);
-        body=chacha20(ck2,cn,1,body);ck2.fill(0);}
-      mk.fill(0);
+      return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,pt)
+      .then(function(ctb){
+        var inner=new Uint8Array(ctb);
+        var body=nL?stackApply(plan,nonce,inner):inner;
+        // Round-trip in process before anything leaves. A silent corruption
+        // anywhere in the stack becomes a loud local refusal instead.
+        var back=nL?stackPeel(plan,nonce,body):body;
+        var same=back.length===inner.length,q;
+        if(same)for(q=0;q<inner.length;q++)if(back[q]!==inner[q]){same=false;break;}
+        if(!same)throw new Error('stack self-check failed at '+nL+' layers');
+        return crypto.subtle.decrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,back)
+        .then(function(rt){
+          var r=unpadPlain(new Uint8Array(rt));
+          if(new TextDecoder().decode(r)!==msg)throw new Error('round-trip verification failed');
+          return body;});});
+    }).then(function(body){
+      pt.fill(0);planWipe(plan);mk.fill(0);
       document.getElementById('chBlob').value='SYNC2.'+toB64(cat([hdr,commit,nonce,body]));
       document.getElementById('chMsg').value='';
       CHAN.txChain=advance(CHAN.txChain);CHAN.txIdx++;CHAN.destroyed++;
-      var lab=chLabel(ctr,role,{direction:'sent',bytes:body.length+26,
-        layers:casc?['ChaCha20 (RFC 8439, outer, confidentiality only)','AES-256-GCM (inner, authenticated)']
-                   :['AES-256-GCM (authenticated)'],
-        cascadeNote:casc?'two independent algorithm families with independent keys: survives one of them being broken, at the cost of twice the implementation to be wrong'
-                        :'single layer; cascade available but off by default'});
+      var lab=chLabel(ctr,role,{direction:'sent',bytes:body.length+27,
+        layerCount:nL+1,
+        layers:'AES-256-GCM (inner, authenticated) + '+nL+' self-inverse keystream layer'+(nL===1?'':'s'),
+        distinctAlgorithmFamilies:Math.min(3,1+Math.min(nL,2)),
+        roundTripVerified:true,
+        honestly:nL>1?('layers beyond the second add NO cryptographic strength. Two independent layers survive one algorithm being broken; more would need several broken at once. '+nL+' layers is an experiment in reliable composition, not extra security.')
+                     :(nL===1?'two independent algorithm families: survives one being catastrophically broken'
+                             :'single authenticated layer; this is the sane default')});
       CHAN.lastLabel=lab;
       chPush('out',msg,Date.now(),lab);
       chRenderRatchet();SRAIN.heat=1.4;
@@ -2276,8 +2361,9 @@
       chPush('err','No SYNC2 envelope here. Older SYNC1 messages cannot be read by this version — the ratchet changed the format.',Date.now());return;}
     var blob;
     try{blob=fromB64(m[1]);}catch(e){chPush('err','Malformed envelope.',Date.now());return;}
-    if(blob.length<6+8+12+16){chPush('err','Envelope too short to be real.',Date.now());return;}
-    var ver=blob[0],role=blob[1]&0x7f,casc=!!(blob[1]&0x80);
+    if(blob.length<7+8+12+16){chPush('err','Envelope too short to be real.',Date.now());return;}
+    if(nL<0||nL>MAXLAYERS){chPush('err','Layer count '+nL+' is out of range.',Date.now());return;}
+    var ver=blob[0],role=blob[1]&0x7f,nL=blob[6]|0;
     var ctr=(blob[2]<<24|blob[3]<<16|blob[4]<<8|blob[5])>>>0;
     if(ver!==2){chPush('err','Unknown envelope version '+ver+'.',Date.now());return;}
     if(role===CHAN.role){
@@ -2286,7 +2372,7 @@
       chPush('err','Replay or out-of-order: message #'+ctr+' arrived but this channel has already moved past it (now expecting #'+CHAN.rxIdx+'). The key that could read it has been destroyed. This is forward secrecy working, not a fault.',Date.now());
       logLine('channel :: REPLAY REJECTED #'+ctr,'a');return;}
     if(ctr-CHAN.rxIdx>1000){chPush('err','Message #'+ctr+' is more than 1000 ahead; refusing to fast-forward that far.',Date.now());return;}
-    var commit=blob.slice(6,14),nonce=blob.slice(14,26),body=blob.slice(26);
+    var commit=blob.slice(7,15),nonce=blob.slice(15,27),body=blob.slice(27);
     var skipped=ctr-CHAN.rxIdx,chain=CHAN.rxChain,i;
     for(i=0;i<skipped;i++){chain=advance(chain);CHAN.destroyed++;}
     var mk=msgKeyOf(chain),expect=commitOf(mk),ok=true;
@@ -2295,8 +2381,8 @@
       CHAN.rxChain=chain;mk.fill(0);
       chPush('err','Key commitment failed at message #'+ctr+'. Either the key is wrong or this ciphertext was built for a different key. AES-GCM alone would not have caught this cleanly — a ciphertext can decrypt validly under two different keys, which is exactly what the commitment closes.',Date.now());
       logLine('channel :: COMMITMENT MISMATCH #'+ctr,'a');return;}
-    var hdr=blob.slice(0,6),aad=cat([TE.encode('SYNC2'),hdr,commit]);
-    if(casc){var ck2=kdf(chain,'SYNC2/chacha');body=chacha20(ck2,nonce,1,body);ck2.fill(0);}
+    var hdr=blob.slice(0,7),aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    if(nL){var plan=layerPlan(chain,nL);body=stackPeel(plan,nonce,body);planWipe(plan);}
     aesKey(mk).then(function(ck){
       return crypto.subtle.decrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,body);
     }).then(function(ptb){
@@ -2304,8 +2390,8 @@
       mk.fill(0);
       CHAN.rxChain=advance(chain);CHAN.rxIdx=ctr+1;CHAN.destroyed++;
       var lab=chLabel(ctr,role,{direction:'received',skippedAndLost:skipped,
-        layers:casc?['ChaCha20 (RFC 8439, outer)','AES-256-GCM (inner, authenticated)']
-                   :['AES-256-GCM (authenticated)']});
+        layerCount:nL+1,
+        layers:'AES-256-GCM (inner, authenticated) + '+nL+' keystream layer'+(nL===1?'':'s')});
       CHAN.lastLabel=lab;
       chPush('in',txtOut,Date.now(),lab);
       chRenderRatchet();SRAIN.heat=1.4;
@@ -2564,6 +2650,19 @@
       document.getElementById('chKey').value=toHex(SEED);chFp();chWipeKeys();chRenderRatchet();
       logLine('channel :: KEY SET FROM SEED · SHARE IT OUT OF BAND');});
     document.getElementById('chKey').addEventListener('input',function(){chFp();chWipeKeys();chRenderRatchet();});
+    (function(){
+      var sl=document.getElementById('chLayers'),out=document.getElementById('chLayersN'),
+          note=document.getElementById('chLayersNote');
+      function upd(){
+        var n=+sl.value;out.textContent=n;
+        note.innerHTML = n===0
+          ? 'One authenticated layer: AES-256-GCM. <b>This is the sane default</b> and everything above it is experiment.'
+          : n===1
+          ? 'Two independent algorithm families. <b>This is the only setting that buys real security</b> \u2014 it survives one of them being catastrophically broken.'
+          : '<b>'+(n+1)+' layers.</b> Past the second these add <em>no</em> cryptographic strength \u2014 three would require two algorithms broken at once, which has never happened. Only three distinct families exist here; the rest repeat them under independent keys. Every layer is self-inverse and the whole stack is round-trip verified before anything is emitted, so this is an experiment in composing many layers <em>reliably</em>, which is the interesting part.';
+      }
+      sl.addEventListener('input',upd);upd();
+    })();
     document.getElementById('chRole').addEventListener('change',function(){chWipeKeys();chRenderRatchet();
       logLine('channel :: ROLE CHANGED \u00b7 RATCHET RESET');});
     document.getElementById('chEnc').addEventListener('click',chEncrypt);
