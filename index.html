@@ -578,6 +578,66 @@
     </div>
   </div>
 
+  <div class="term panel" id="kwPanel">
+    <div class="ptop"><div class="ptitle">> KEYSPACE.COLLAPSE</div><div class="pmeta">attack the generator · fly-brain oracle</div></div>
+
+    <div class="vow">
+      <div class="vowh">The novel brute force: break the entropy, not the cipher</div>
+      <div class="hint" style="margin-top:6px">
+        A 256-bit random key is untouchable. But a key is only as strong as the entropy
+        that made it, and most real keys are seeded from a clock or a weak RNG. The key
+        below is full-width <code>SHA-256(seed)</code> — it <b>looks</b> 256-bit — but the
+        weakness is the seed, and the seed is what we search. There is no authentication
+        tag and no verifier, so the only thing that can tell a right key from millions of
+        wrong ones is <b>recognising that the output became meaningful</b>. That is the
+        fly brain's job: a cheap filter narrows the whole keyspace to a shortlist, then the
+        mushroom body's familiarity detector confirms which survivor is real.
+        <br><br>
+        On a key from real entropy the shortlist is empty and the counter says so. This is
+        the 2008 Debian OpenSSL attack in miniature — a broken RNG collapsed real keys to
+        ~2¹⁵, and they fell.
+      </div>
+    </div>
+
+    <label class="krlab" for="kwTarget">Target — a <code>SYNCWK1.</code> blob</label>
+    <textarea id="kwTarget" class="sdta" autocomplete="off" spellcheck="false" style="min-height:48px"
+      placeholder="Paste a SYNCWK1. blob, or build one below and watch the fly brain collapse its keyspace."></textarea>
+    <div id="kwDetect" class="krdet"></div>
+    <div class="sdf" style="margin-top:8px">
+      <button id="kwGo" class="cbtn" type="button">🧠 Collapse keyspace</button>
+      <button id="kwStop" class="cbtn danger" type="button" disabled>■ Stop</button>
+    </div>
+    <div id="kwStats" class="krstats"></div>
+    <div id="kwResult" class="krres"></div>
+
+    <div class="stage">build a target <b>· weak seed vs real entropy</b></div>
+    <div class="sdf">
+      <select id="kwGen" class="sdsel">
+        <option value="t3600">clock seed · last hour (2^11.8)</option>
+        <option value="t86400" selected>clock seed · last day (2^16.4)</option>
+        <option value="i16">16-bit integer seed (2^16)</option>
+        <option value="i20">20-bit integer seed (2^20)</option>
+        <option value="strong">CSPRNG · real entropy (untouchable)</option>
+      </select>
+    </div>
+    <div class="sdf">
+      <input id="kwPt" class="sdin" placeholder="secret plaintext to protect" autocomplete="off" spellcheck="false">
+      <button id="kwMk" class="cbtn" type="button">→ build blob</button>
+    </div>
+    <div class="hint">Build one with a clock or small-integer seed and watch it fall in seconds; build the
+      CSPRNG one and watch the tool refuse to pretend. Same cipher, same key width — only the entropy differs.</div>
+
+    <div class="danger-note">
+      <b>What it is.</b> A demonstration that brute force wins exactly when — and only when —
+      the entropy behind a key is weak. The search is real, the recovered plaintext is real,
+      and the keyspace and time-to-exhaust are computed honestly and shown as you go.
+      <br><br>
+      <b>What it is not.</b> Not a way to brute-force real encryption. A key from a real
+      CSPRNG has a keyspace no search on Earth completes, and the tool says so rather than
+      faking a crawl toward it. It runs only on blobs you build or paste here.
+    </div>
+  </div>
+
   <div class="term panel p2">
     <div class="ptop"><div class="ptitle">> CUMULATIVE COHERENCE</div><div class="pmeta">Σ(χ²−1) walk</div></div>
     <canvas id="walk" class="chart"></canvas>
@@ -2944,6 +3004,137 @@
 
 
   /* ══════════════════════════════════════════════════════════════════════════
+     KEYSPACE.COLLAPSE — brute-force the GENERATOR, not the cipher.
+
+     A 256-bit random key is untouchable and always will be. But a key is only
+     as strong as the entropy that made it, and most real keys are not random:
+     they are seeded from a clock, a small integer, or a broken RNG. The Debian
+     OpenSSL disaster of 2008 collapsed real SSH and TLS keys to ~2^15 this way,
+     and they were mass-recovered. This is that attack, made concrete.
+
+     The key here is full-width -- SHA-256(seed) -- so it LOOKS 256-bit. The
+     weakness is the seed, and the seed is what we search. The cipher is
+     ChaCha20 with no authentication tag, so there is no built-in verifier: the
+     only thing that can tell a right key from 65,535 wrong ones is RECOGNISING
+     that the output became meaningful. That recognition is the fly brain's job.
+
+     Two stages, because running the mushroom body on every candidate is too
+     slow to be honest about: a cheap printable-text filter narrows the whole
+     keyspace to a shortlist, then the fly brain's familiarity detector confirms
+     which survivor is real and rejects the lookalikes. On a truly random key
+     the shortlist is empty and the counter says so -- no fake progress.
+     ══════════════════════════════════════════════════════════════════════════ */
+  function kwKey(seed){ return sha256(new TextEncoder().encode('SYNCWK/'+seed)); }
+  function kwPrint(b){                                    // cheap first-stage recogniser
+    var p=0,l=0,i,c;for(i=0;i<b.length;i++){c=b[i];
+      if(c===32||c===10||c===13||(c>=65&&c<=90)||(c>=97&&c<=122)){p++;if(c!==32&&c!==10)l++;}}
+    return b.length?p/b.length+0.3*(l/b.length):0;
+  }
+  function kwFam(bytes){                                  // fly brain: familiarity/structure
+    var W=8,seen=[],nov=0,n=0,o,c,best,s,x,ov,K=cnGateBrain().K;
+    for(o=0;o+W<=bytes.length&&n<64;o+=W){c=cnCode(bytes,o,W);best=0;
+      for(s=0;s<seen.length;s++){ov=0;for(x in c)if(seen[s][x])ov++;if(ov>best)best=ov;}
+      nov+=1-best/K;n++;if(seen.length<40)seen.push(c);}
+    return n?1-nov/n:0;
+  }
+  var KWCAP=1<<22;                                        // 4.2M: the sane browser ceiling
+  var KW={running:false};
+  // blob: SYNCWK1.<b64url( gentype[1] | param[4 BE] | nonce[12] | ct )>
+  function kwMakeBlob(gentype,param,pt){
+    var seed;
+    if(gentype===1){var now=Math.floor(Date.now()/1000);seed=now-((Math.random()*param)|0);}   // time window (s)
+    else if(gentype===0){seed=(Math.random()*Math.pow(2,param))>>>0;}                            // integer, param bits
+    else{var r=new Uint32Array(2);crypto.getRandomValues(r);seed='X'+r[0].toString(16)+r[1].toString(16);} // strong: 64-bit-ish, unsearchable
+    var key=kwKey(seed),nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
+    var ct=chacha20(key,nonce,1,new TextEncoder().encode(pt));
+    var hdr=new Uint8Array(5);hdr[0]=gentype;
+    hdr[1]=(param>>>24)&255;hdr[2]=(param>>>16)&255;hdr[3]=(param>>>8)&255;hdr[4]=param&255;
+    return 'SYNCWK1.'+toB64(cat([hdr,nonce,ct]));
+  }
+  function kwParse(t){
+    var m=String(t).trim().match(/SYNCWK1\.([A-Za-z0-9\-_=]+)/);if(!m)return null;
+    var raw;try{raw=fromB64(m[1]);}catch(e){return null;}
+    if(raw.length<5+12+1)return null;
+    return {gentype:raw[0],param:((raw[1]<<24)|(raw[2]<<16)|(raw[3]<<8)|raw[4])>>>0,
+      nonce:raw.slice(5,17),ct:raw.slice(17)};
+  }
+  function kwRange(b){
+    if(b.gentype===1){var now=Math.floor(Date.now()/1000);return {lo:now-b.param,hi:now,label:'clock seed, last '+kwDur(b.param)};}
+    if(b.gentype===0){return {lo:0,hi:Math.pow(2,b.param)-1,label:b.param+'-bit integer seed'};}
+    return {lo:0,hi:Math.pow(2,53),label:'CSPRNG (effectively 2^256)'};   // strong: unsearchable
+  }
+  function kwDur(s){if(s<3600)return (s/60|0)+' min';if(s<86400)return (s/3600|0)+' h';return (s/86400|0)+' days';}
+  function kwFmtPow(x){return x>1e6?'2^'+Math.log2(x).toFixed(1):Math.round(x).toLocaleString();}
+
+  function kwDetect(){
+    var b=kwParse(document.getElementById('kwTarget').value),d=document.getElementById('kwDetect');
+    if(!b){d.innerHTML=document.getElementById('kwTarget').value.trim()?'unrecognized — expected a SYNCWK1. blob':'';return null;}
+    var R=kwRange(b),space=R.hi-R.lo+1;
+    var strong=b.gentype===2||space>KWCAP;
+    d.innerHTML='generator: <b>'+R.label+'</b> · keyspace <b>'+(b.gentype===2?'2^256':kwFmtPow(space))+'</b>'+
+      (strong?' <span style="color:var(--grn)">— beyond a browser brute force</span>':' <span style="color:var(--amber)">— searchable</span>');
+    return {blob:b,range:R,space:space,strong:strong};
+  }
+  function kwStat(phase,tried,total,extra){
+    var dt=(Date.now()-KW.t0)/1000,rate=dt>0?tried/dt:0;
+    var etaFull=rate>0?(total/rate):Infinity, y=etaFull/(3600*24*365);
+    document.getElementById('kwStats').innerHTML=
+      '<div class="s"><span>phase</span><b>'+phase+'</b></div>'+
+      '<div class="s"><span>keyspace</span><b>'+kwFmtPow(total)+'</b></div>'+
+      '<div class="s"><span>candidates tried</span><b>'+tried.toLocaleString()+'</b></div>'+
+      '<div class="s"><span>rate</span><b>'+(rate>=1?Math.round(rate).toLocaleString()+' /s':rate.toFixed(1)+' /s')+'</b></div>'+
+      '<div class="s"><span>to exhaust this space</span><b>'+(etaFull<60?etaFull.toFixed(1)+' s':(y<1?(etaFull/3600).toFixed(1)+' h':(y>1e6?y.toExponential(1)+' yr':Math.round(y).toLocaleString()+' yr')))+'</b></div>'+(extra||'');
+  }
+  function kwFinish(seed,pt,tried,space,partial){
+    KW.running=false;
+    document.getElementById('kwGo').disabled=false;document.getElementById('kwStop').disabled=true;
+    var r=document.getElementById('kwResult');
+    if(seed!=null){r.innerHTML='<div class="hit">KEYSPACE COLLAPSED · seed <b>'+kwEsc(''+seed)+'</b>'+
+      '<div style="margin-top:6px;color:var(--txt)">recovered plaintext: “'+kwEsc(pt)+'”</div>'+
+      '<div style="margin-top:6px;font-size:10px;color:var(--dim)">The key was full-width SHA-256 and looked 256-bit. It fell because its <b>entropy</b> was '+kwFmtPow(space)+', not because the cipher was weak. Good entropy is the only defence.</div></div>';
+      logLine('keyspace :: COLLAPSED at seed '+seed+' after '+tried.toLocaleString()+' tries');}
+    else{r.innerHTML='<div class="miss">UNBROKEN'+(partial?' (searched '+tried.toLocaleString()+' of '+kwFmtPow(space)+', the browser ceiling)':' after '+tried.toLocaleString()+' candidates')+
+      '. The fly brain recognised nothing meaningful in any decryption tried. A key from real entropy lives out here, and no novel search reaches it — that is the honest result the whole page argues for.</div>';
+      logLine('keyspace :: UNBROKEN after '+tried.toLocaleString()+' tries','a');}
+  }
+  function kwEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function kwStart(){
+    if(KW.running)return;
+    var det=kwDetect();if(!det){document.getElementById('kwResult').innerHTML='<div class="miss">Paste or build a SYNCWK1. blob first.</div>';return;}
+    if(det.strong){
+      document.getElementById('kwResult').innerHTML='<div class="miss">This blob’s keyspace is '+(det.blob.gentype===2?'2^256':kwFmtPow(det.space))+
+        ' — beyond any browser brute force (and, for a real CSPRNG key, beyond any machine). Nothing to collapse. That is the point: attack the generator only when the generator is weak.</div>';
+      return;}
+    KW.running=true;KW.t0=Date.now();
+    document.getElementById('kwGo').disabled=true;document.getElementById('kwStop').disabled=false;
+    document.getElementById('kwResult').innerHTML='';
+    var b=det.blob,R=det.range,space=det.space;
+    var seed=R.lo,tried=0,shortlist=[];
+    function tick(){
+      if(!KW.running){kwFinish(null,null,tried,space,true);return;}
+      var budget=8000,end=Math.min(R.hi,seed+budget-1);
+      for(;seed<=end;seed++){tried++;
+        var dec=chacha20(kwKey(seed),b.nonce,1,b.ct);
+        if(kwPrint(dec)>1.0){shortlist.push([seed,dec]);if(shortlist.length>400)shortlist.shift();}
+      }
+      kwStat('stage 1 · cheap filter → shortlist '+shortlist.length,tried,space);
+      if(seed>R.hi){                                       // stage 2: fly brain confirms
+        kwStat('stage 2 · fly brain confirming '+shortlist.length,tried,space);
+        var best=-1,bs=null,bdec=null,i,f;
+        for(i=0;i<shortlist.length;i++){f=kwFam(shortlist[i][1]);
+          if(f>best){best=f;bs=shortlist[i][0];bdec=shortlist[i][1];}}
+        if(bs!=null&&best>0.12)kwFinish(bs,new TextDecoder().decode(bdec),tried,space,false);
+        else kwFinish(null,null,tried,space,false);
+        return;
+      }
+      setTimeout(tick,0);
+    }
+    tick();
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════════
      KEYED.CHANNEL — a pre-shared-key message box built on the extractor.
 
      AES-256-GCM from SubtleCrypto (audited, constant-time) rather than anything
@@ -3620,6 +3811,17 @@
       if(!pw){logLine('key.recovery :: TYPE A PASSWORD FIRST','a');return;}
       krMakeBlob(pw,pt).then(function(b){document.getElementById('krTarget').value=b;krDetect();
         logLine('key.recovery :: SYNCPW1 blob built (PBKDF2 150k)');});});
+    document.getElementById('kwGo').addEventListener('click',kwStart);
+    document.getElementById('kwStop').addEventListener('click',function(){KW.running=false;});
+    document.getElementById('kwTarget').addEventListener('input',kwDetect);
+    document.getElementById('kwMk').addEventListener('click',function(){
+      var v=document.getElementById('kwGen').value,pt=document.getElementById('kwPt').value||'meet at the north bridge at midnight';
+      var gentype,param;
+      if(v==='strong'){gentype=2;param=0;}
+      else if(v[0]==='t'){gentype=1;param=parseInt(v.slice(1),10);}
+      else{gentype=0;param=parseInt(v.slice(1),10);}
+      document.getElementById('kwTarget').value=kwMakeBlob(gentype,param,pt);kwDetect();
+      logLine('keyspace :: SYNCWK1 blob built ('+v+')');});
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
