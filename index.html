@@ -186,6 +186,21 @@
   .ldg.bad span:first-child{color:var(--amber)}
   .ldg.tot{border-bottom:0;color:var(--grn);margin-top:3px}
   .ldg.mb{border-bottom:0;color:var(--fly);margin-top:2px}
+  .cngate{font-size:11px;line-height:1.6;margin:2px 0 4px}
+  .cngate .g{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+  .cngate .gk{color:var(--dim);min-width:120px}
+  .cngate .gv{color:var(--bright)}
+  .cngate .verdict{margin-top:6px;font-size:11px;padding:7px 9px;border-radius:5px;border:1px solid var(--edge)}
+  .cngate .verdict.weak{color:var(--amber);border-color:var(--amber);background:rgba(255,210,63,.06)}
+  .cngate .verdict.strong{color:var(--grn);border-color:var(--grndim);background:rgba(0,255,102,.05)}
+  .cnr{border:1px solid var(--hair);border-radius:5px;padding:8px 10px;margin-top:7px;background:rgba(0,0,0,.28)}
+  .cnr.win{border-color:var(--grndim);box-shadow:inset 0 0 22px -14px var(--grn)}
+  .cnr .cnh{display:flex;justify-content:space-between;gap:8px;font-size:10px;letter-spacing:.08em;color:var(--dim)}
+  .cnr .cnh b{color:var(--bright);letter-spacing:0}
+  .cnr .cnpt{font-size:12px;color:var(--txt);margin-top:5px;word-break:break-word;white-space:pre-wrap}
+  .cnr .cnnote{font-size:9.5px;color:var(--faint);margin-top:5px}
+  .cnbar{height:4px;border-radius:2px;background:rgba(0,255,102,.12);margin-top:6px;overflow:hidden}
+  .cnbar>i{display:block;height:100%;background:var(--grn)}
   .ldg.tot span:first-child{color:var(--grn)}
   .ratchet{display:flex;gap:5px;align-items:center;margin:8px 0 4px;flex-wrap:wrap}
   .rk{font-size:15px;line-height:1}
@@ -436,6 +451,53 @@
       For real conversations that need those properties, use Signal. Use this for a note you
       want to hand someone without a server in the middle, and rotate the key freely — a new
       seed takes one press.
+    </div>
+  </div>
+
+  <div class="term panel" id="cnPanel">
+    <div class="ptop"><div class="ptitle">> CRYPTANALYSIS.BRAIN</div><div class="pmeta" id="cnMeta">classical ciphers only · offline</div></div>
+
+    <div class="vow">
+      <div class="vowh">What this does — and the one thing it cannot</div>
+      <div class="hint" style="margin-top:6px">
+        A triage brain and a set of classical solvers. The mushroom-body gate first
+        asks whether the input has any exploitable structure at all. If it does, the
+        solvers try to actually recover the plaintext: shift, Atbash, monoalphabetic
+        substitution (simulated annealing over English quadgrams), Vigenère, and
+        single- or repeating-key XOR. <b>Paste ciphertext, it attempts to read it.</b>
+        <br><br>
+        <b>It cannot break a modern cipher, and it will tell you so.</b> AES, ChaCha and
+        anything like them produce output the gate reads as structureless — because it
+        is — and the brain aborts rather than pretending. That refusal is the honest
+        half: a tool that claimed to crack AES would be lying, and the gate is what
+        proves it is not trying to.
+      </div>
+    </div>
+
+    <textarea id="cnIn" class="sdta" autocomplete="off" spellcheck="false" style="min-height:70px"
+      placeholder="Paste ciphertext here — plain letters for a classical cipher, or hex / base64 for a byte cipher. Try a Caesar shift, a substitution cipher, or a repeating-XOR blob."></textarea>
+    <div class="sdf" style="margin-top:9px">
+      <button id="cnGo" class="cbtn" type="button">🧠 Attempt to decode</button>
+      <button id="cnDemo" class="cbtn" type="button">⚗ Load a sample</button>
+      <button id="cnClr" class="cbtn danger" type="button">⌫ Clear</button>
+    </div>
+
+    <div class="stage" id="cnGateStage" style="display:none">structure gate <b>· is there anything to attack</b></div>
+    <div class="cngate" id="cnGate"></div>
+    <div class="stage" id="cnResStage" style="display:none">attempts <b>· ranked by English-ness</b></div>
+    <div id="cnResults"></div>
+
+    <div class="danger-note">
+      <b>What it is.</b> A teaching and triage tool for classical cryptanalysis, run
+      entirely in this tab. The solvers are standard textbook methods; the only novel
+      part is using the connectome as the front-end that decides whether an attack is
+      even worth attempting. Every result shows its own confidence, and a low score
+      means the brain is guessing.
+      <br><br>
+      <b>What it is not.</b> Not an attack on anyone else's traffic, and not a break of
+      any cipher in current use. It exists to show, concretely, the gap between a cipher
+      that leaks structure and one that does not — which is the whole reason the entropy
+      work on this page matters.
     </div>
   </div>
 
@@ -2235,6 +2297,363 @@
 
 
   /* ══════════════════════════════════════════════════════════════════════════
+     CRYPTANALYSIS.BRAIN — attempts to READ ciphertext, honestly.
+
+     Two parts. A mushroom-body GATE decides whether the input has any
+     exploitable structure at all: it runs the same familiarity detector the
+     entropy monitor uses -- AL divisive normalization, a fixed random Kenyon-
+     cell projection, k-winner-take-all -- over the bytes and asks how often a
+     window looks like one it has already seen. Structureless input (a modern
+     cipher) is maximally novel and the brain aborts; a classical cipher leaks
+     recurrence and the gate opens.
+
+     The SOLVERS are then standard textbook cryptanalysis: shift, Atbash,
+     monoalphabetic substitution by simulated annealing over English quadgrams,
+     Vigenère by index-of-coincidence key-length search, and single- and
+     repeating-key XOR. None of this touches, or can touch, a cipher whose
+     output is indistinguishable from random -- which is exactly what the gate
+     verifies before a single solver runs.
+     ══════════════════════════════════════════════════════════════════════════ */
+  var CN_CORPUS=(
+    "when in the course of human events it becomes necessary for one people to dissolve the political bands which h "+
+    "ave connected them with another and to assume among the powers of the earth the separate and equal station to  "+
+    "which the laws of nature and of natures god entitle them a decent respect to the opinions of mankind requires  "+
+    "that they should declare the causes which impel them to the separation we hold these truths to be self evident "+
+    " that all men are created equal that they are endowed by their creator with certain unalienable rights that am "+
+    "ong these are life liberty and the pursuit of happiness that to secure these rights governments are instituted "+
+    " among men deriving their just powers from the consent of the governed that whenever any form of government be "+
+    "comes destructive of these ends it is the right of the people to alter or to abolish it and to institute new g "+
+    "overnment laying its foundation on such principles and organizing its powers in such form as to them shall see "+
+    "m most likely to effect their safety and happiness to be or not to be that is the question whether tis nobler  "+
+    "in the mind to suffer the slings and arrows of outrageous fortune or to take arms against a sea of troubles an "+
+    "d by opposing end them to die to sleep no more and by a sleep to say we end the heart ache and the thousand na "+
+    "tural shocks that flesh is heir to it is a consummation devoutly to be wished to die to sleep to sleep perchan "+
+    "ce to dream ay there is the rub for in that sleep of death what dreams may come when we have shuffled off this "+
+    " mortal coil must give us pause call me ishmael some years ago never mind how long precisely having little or  "+
+    "no money in my purse and nothing particular to interest me on shore i thought i would sail about a little and  "+
+    "see the watery part of the world it is a way i have of driving off the spleen and regulating the circulation w "+
+    "henever i find myself growing grim about the mouth whenever it is a damp drizzly november in my soul then i ac "+
+    "count it high time to get to sea as soon as i can it was the best of times it was the worst of times it was th "+
+    "e age of wisdom it was the age of foolishness it was the epoch of belief it was the epoch of incredulity it wa "+
+    "s the season of light it was the season of darkness it was the spring of hope it was the winter of despair we  "+
+    "had everything before us we had nothing before us we were all going direct to heaven we were all going direct  "+
+    "the other way happy families are all alike every unhappy family is unhappy in its own way all this happened mo "+
+    "re or less the quick brown fox jumps over the lazy dog while the sleepy cat watches from the warm windowsill a "+
+    "nd dreams of summer fields now is the time for all good men to come to the aid of their country and to defend  "+
+    "the common good against every enemy foreign and domestic the rain in spain falls mainly on the plain and the p "+
+    "lain truth is that honest work and honest words will carry a person further than any clever trick in the begin "+
+    "ning the universe was created this has made a lot of people very angry and been widely regarded as a bad move  "+
+    "space is big really big you just would not believe how vastly hugely mind bogglingly big it is the answer to t "+
+    "he great question of life the universe and everything is that a good tool tells you plainly what it can do and "+
+    " what it cannot many years later as he faced the firing squad the colonel was to remember that distant afterno "+
+    "on when his father took him to discover ice it is a truth universally acknowledged that a single man in posses "+
+    "sion of a good fortune must be in want of a wife the past is a foreign country they do things differently ther "+
+    "e all happy thoughts turn upon the simple pleasures of a quiet mind a good book a long walk and the company of "+
+    " friends who tell the truth knowledge is of two kinds we know a subject ourselves or we know where we can find "+
+    " information upon it the measure of intelligence is the ability to change and to admit plainly when a first at "+
+    "tempt has failed and a second must be tried ");
+  var CN_N=3,CN_TBL=null,CN_TOT=0,CN_FLOOR=0;
+  // English single-letter frequencies (for the corpus-independent Caesar chi-square)
+  var CN_EF=[.08167,.01492,.02782,.04253,.12702,.02228,.02015,.06094,.06966,.00153,
+             .00772,.04025,.02406,.06749,.07507,.01929,.00095,.05987,.06327,.09056,
+             .02758,.00978,.02360,.00150,.01974,.00074];
+  function cnBuild(){
+    if(CN_TBL)return;
+    CN_TBL=Object.create(null);CN_TOT=0;
+    var c=CN_CORPUS.replace(/[^a-z]/g,''),i,g;
+    for(i=0;i+CN_N<=c.length;i++){g=c.substr(i,CN_N);CN_TBL[g]=(CN_TBL[g]||0)+1;CN_TOT++;}
+    CN_FLOOR=Math.log(0.01/CN_TOT);
+  }
+  function cnScoreTot(t){                                 // TOTAL log-prob — for annealing
+    cnBuild();var s=0,i,c;
+    for(i=0;i+CN_N<=t.length;i++){c=CN_TBL[t.substr(i,CN_N)];s+=c?Math.log(c/CN_TOT):CN_FLOOR;}
+    return s;
+  }
+  function cnScore(t){                                    // PER-CHAR — for ranking across lengths
+    var n=Math.max(1,t.length-CN_N+1);return cnScoreTot(t)/n;
+  }
+  function cnConf(perChar){                               // random ~ -12.2/char, fluent ~ -9.1/char
+    var lo=-12.2,hi=-9.1,v=(perChar-lo)/(hi-lo);
+    return Math.max(0,Math.min(1,v));
+  }
+  var CN_AZ="abcdefghijklmnopqrstuvwxyz";
+
+  // ---------- the mushroom-body structure gate ----------
+  var CNMB=null;
+  function cnGateBrain(){
+    if(CNMB)return CNMB;
+    var r=mkSplitmix32(0xC0FFEE),NPN=51,NKC=1917,claw=[],odor=[],j,v,n,g,seen;
+    for(j=0;j<NKC;j++){n=3+((r()*8)|0);g=[];seen={};
+      while(g.length<n){var x=(r()*NPN)|0;if(!seen[x]){seen[x]=1;g.push(x);}}claw.push(g);}
+    for(v=0;v<256;v++)odor.push([(r()*NPN)|0,(r()*NPN)|0,(r()*NPN)|0]);
+    CNMB={NPN:NPN,NKC:NKC,K:Math.round(NKC*0.05),claw:claw,odor:odor};return CNMB;
+  }
+  function cnCode(bytes,off,W){
+    var B=cnGateBrain(),pn=new Float64Array(B.NPN),i,gset,s2=0,gg,kc=new Float64Array(B.NKC),a,c;
+    for(i=0;i<W;i++){gset=B.odor[bytes[off+i]&255];pn[gset[0]]++;pn[gset[1]]++;pn[gset[2]]++;}
+    for(i=0;i<B.NPN;i++)s2+=pn[i]*pn[i];
+    gg=1/Math.sqrt(1+s2/B.NPN);for(i=0;i<B.NPN;i++)pn[i]*=gg;
+    for(i=0;i<B.NKC;i++){a=0;var cl=B.claw[i];for(c=0;c<cl.length;c++)a+=pn[cl[c]];kc[i]=a;}
+    var idx=[];for(i=0;i<B.NKC;i++)idx.push(i);
+    idx.sort(function(p,q){return kc[q]-kc[p];});
+    var set={},top=idx.slice(0,B.K);for(i=0;i<top.length;i++)set[top[i]]=1;return set;
+  }
+  function cnNovelty(bytes){
+    var B=cnGateBrain(),W=16,seen=[],novSum=0,n=0,o,c,best,s,x;
+    for(o=0;o+W<=bytes.length&&n<400;o+=W){
+      c=cnCode(bytes,o,W);best=0;
+      for(s=0;s<seen.length;s++){var ov=0;for(x in c)if(seen[s][x])ov++;if(ov>best)best=ov;}
+      novSum+=1-best/B.K;n++;
+      if(seen.length<200)seen.push(c);
+    }
+    return n?novSum/n:1;
+  }
+  function cnEntropy(bytes){
+    var h=new Uint32Array(256),i;for(i=0;i<bytes.length;i++)h[bytes[i]&255]++;
+    var H=0,p;for(i=0;i<256;i++)if(h[i]){p=h[i]/bytes.length;H-=p*Math.log2(p);}return H;
+  }
+  function cnIC(bytes){                                   // index of coincidence over a-z if texty
+    var h=new Uint32Array(256),i,tot=0;for(i=0;i<bytes.length;i++){h[bytes[i]&255]++;}
+    var s=0;for(i=0;i<256;i++){s+=h[i]*(h[i]-1);tot+=h[i];}
+    return tot>1?s/(tot*(tot-1)):0;
+  }
+
+  // ---------- input parsing ----------
+  function cnParse(raw){
+    var t=raw.trim();
+    // hex?
+    if(/^[0-9a-fA-F\s]+$/.test(t)&&t.replace(/\s/g,'').length%2===0&&t.replace(/\s/g,'').length>=8){
+      var hx=t.replace(/\s/g,''),b=new Uint8Array(hx.length>>1),i;
+      for(i=0;i<b.length;i++)b[i]=parseInt(hx.substr(i*2,2),16);
+      return {bytes:b,kind:'hex'};
+    }
+    // base64?
+    if(/^[A-Za-z0-9+/=_\-\s]+$/.test(t)&&t.replace(/[\s]/g,'').length>=8&&/[+/=]|[A-Z].*[a-z]|[a-z].*[A-Z]/.test(t)&&!/^[a-z ]+$/.test(t)){
+      try{var d=fromB64(t.replace(/\s/g,''));if(d.length>=6)return {bytes:d,kind:'base64'};}catch(e){}
+    }
+    // plain text
+    var enc=new TextEncoder().encode(t);
+    return {bytes:enc,kind:'text',text:t};
+  }
+  function cnLetters(t){return t.toLowerCase().replace(/[^a-z]/g,'');}
+
+  // ---------- solvers ----------  each returns {name,pt,perChar,note}
+  function cnCaesar(letters){
+    if(!letters.length)return null;
+    var bestSh=0,bestChi=1e18,sh,i,h,n,x,e;
+    for(sh=0;sh<26;sh++){h=new Float64Array(26);n=0;
+      for(i=0;i<letters.length;i++){h[(letters.charCodeAt(i)-97-sh+26)%26]++;n++;}
+      x=0;for(var q=0;q<26;q++){e=n*CN_EF[q];x+=(h[q]-e)*(h[q]-e)/e;}
+      if(x<bestChi){bestChi=x;bestSh=sh;}}
+    var out='';for(i=0;i<letters.length;i++)out+=CN_AZ[(letters.charCodeAt(i)-97-bestSh+26)%26];
+    return {name:'Caesar / ROT shift',pt:out,perChar:cnScore(out),note:'shift of '+bestSh+' (chi-square fit)'};
+  }
+  function cnAtbash(letters){
+    var out='',i;for(i=0;i<letters.length;i++)out+=CN_AZ[25-(letters.charCodeAt(i)-97)];
+    return {name:'Atbash',pt:out,perChar:cnScore(out),note:'mirror alphabet'};
+  }
+  function cnSubst(letters){
+    // Below ~70 characters a monoalphabetic solve overfits: with 26! keys, annealing
+    // finds a key that scores BETTER than the true plaintext on so little text, so the
+    // ranking cannot tell truth from a lucky fit. Declining is the honest answer -- a
+    // short substitution cipher genuinely is not reliably solvable, and a Caesar of the
+    // same length still is (only 26 possibilities).
+    if(letters.length<70)return null;
+    var freq=new Uint32Array(26),i;for(i=0;i<letters.length;i++)freq[letters.charCodeAt(i)-97]++;
+    var eng="etaoinshrdlcumwfgypbvkjxqz",order=[];for(i=0;i<26;i++)order.push(i);
+    order.sort(function(a,b){return freq[b]-freq[a];});
+    var key=CN_AZ.split('');order.forEach(function(ci,r){key[ci]=eng[r];});
+    function dec(k){var o='',j;for(j=0;j<letters.length;j++)o+=k[letters.charCodeAt(j)-97];return o;}
+    var bestKey=key.slice(),best=cnScoreTot(dec(key)),rs,it,a,b,k,cur,sc,T,tmp;
+    var iters=letters.length>800?9000:15000, restarts=letters.length>800?14:22;
+    for(rs=0;rs<restarts;rs++){
+      k=bestKey.slice();
+      for(it=0;it<rs;it++){a=(Math.random()*26)|0;b=(Math.random()*26)|0;tmp=k[a];k[a]=k[b];k[b]=tmp;} // diversify restarts
+      cur=cnScoreTot(dec(k));T=Math.max(20,letters.length*0.4);
+      for(it=0;it<iters;it++){T*=0.9997;
+        a=(Math.random()*26)|0;b=(Math.random()*26)|0;if(a===b)continue;
+        tmp=k[a];k[a]=k[b];k[b]=tmp;sc=cnScoreTot(dec(k));
+        if(sc>cur||Math.random()<Math.exp((sc-cur)/T))cur=sc;else{tmp=k[a];k[a]=k[b];k[b]=tmp;}
+      }
+      if(cur>best){best=cur;bestKey=k.slice();}
+    }
+    var short=letters.length<120;
+    return {name:'Monoalphabetic substitution',pt:dec(bestKey),perChar:cnScore(dec(bestKey)),
+      note:'annealed key '+bestKey.join('')+(short?' · short ciphertext, treat with caution':'')};
+  }
+  function cnVigenere(letters){
+    if(letters.length<60)return null;
+    function icAt(len){                                   // avg IoC across len columns
+      var sum=0,off,cnt,h,i,tot,s;
+      for(off=0;off<len;off++){h=new Uint32Array(26);cnt=0;
+        for(i=off;i<letters.length;i+=len){h[letters.charCodeAt(i)-97]++;cnt++;}
+        s=0;for(i=0;i<26;i++)s+=h[i]*(h[i]-1);
+        sum+=cnt>1?s/(cnt*(cnt-1)):0;}
+      return sum/len;
+    }
+    var bestLen=1,bestScore=-1,bestIC=0,L;
+    for(L=1;L<=Math.min(16,letters.length>>2);L++){
+      var ic=icAt(L),sc=ic-L*0.0025;                      // bias toward the fundamental period
+      if(sc>bestScore){bestScore=sc;bestLen=L;bestIC=ic;}}
+    if(bestLen<2||bestIC<0.052)return null;               // no periodicity worth chasing
+    var key='',off,i,bshift,bs,sh,h,chi,expected=[.082,.015,.028,.043,.127,.022,.020,.061,.070,.002,.008,.040,.024,.067,.075,.019,.001,.060,.063,.091,.028,.010,.023,.001,.020,.001];
+    for(off=0;off<bestLen;off++){
+      bs=0;bshift=0;var bestChi=1e9;
+      for(sh=0;sh<26;sh++){h=new Uint32Array(26);var cnt=0;
+        for(i=off;i<letters.length;i+=bestLen){h[(letters.charCodeAt(i)-97-sh+26)%26]++;cnt++;}
+        chi=0;for(var q=0;q<26;q++){var o=h[q]/cnt,e=expected[q];chi+=(o-e)*(o-e)/e;}
+        if(chi<bestChi){bestChi=chi;bshift=sh;}
+      }
+      key+=CN_AZ[bshift];
+    }
+    var out='';for(i=0;i<letters.length;i++)out+=CN_AZ[(letters.charCodeAt(i)-97-(key.charCodeAt(i%bestLen)-97)+26)%26];
+    return {name:'Vigenère',pt:out,perChar:cnScore(out),note:'key length '+bestLen+' · key "'+key+'"'};
+  }
+  function cnPrintRatio(b){var p=0,i,c;for(i=0;i<b.length;i++){c=b[i]&255;
+    if(c===9||c===10||c===13||(c>=32&&c<=126))p++;}return b.length?p/b.length:0;}
+  function cnByteFitness(bytes){                          // honest fitness for a byte-decoding
+    if(cnPrintRatio(bytes)<0.9)return -20;                // mostly non-printable: not plaintext
+    var L=cnLetters(cnBytesToText(bytes));
+    if(L.length<bytes.length*0.45)return -18;             // too few letters to trust
+    return cnScore(L);
+  }
+  function cnXorSingle(bytes){
+    var bestK=0,best=-1e9,k,i,o,f;
+    for(k=0;k<256;k++){o=new Uint8Array(bytes.length);for(i=0;i<bytes.length;i++)o[i]=bytes[i]^k;
+      f=cnByteFitness(o);if(f>best){best=f;bestK=k;}}
+    o=new Uint8Array(bytes.length);for(i=0;i<bytes.length;i++)o[i]=bytes[i]^bestK;
+    return {name:'Single-byte XOR',pt:cnBytesToText(o),perChar:best,
+      note:'key byte 0x'+(bestK<16?'0':'')+bestK.toString(16)};
+  }
+  function cnXorRepeat(bytes){
+    if(bytes.length<40)return null;
+    function ham(a,b){var d=0,i,x;for(i=0;i<a.length;i++){x=a[i]^b[i];while(x){d+=x&1;x>>=1;}}return d;}
+    // key-length search: normalized Hamming, with a small penalty on length so the
+    // FUNDAMENTAL period wins over its multiples (a multiple leaves fewer samples
+    // per column and recovers garbage)
+    var bestLen=1,bestScore=1e9,L;
+    for(L=2;L<=Math.min(40,bytes.length>>2);L++){
+      var blocks=Math.min(8,(bytes.length/L)|0),tot=0,cnt=0,bi;
+      for(bi=0;bi+1<blocks;bi++){tot+=ham(bytes.subarray(bi*L,bi*L+L),bytes.subarray((bi+1)*L,(bi+1)*L+L))/L;cnt++;}
+      if(cnt){var nm=tot/cnt+L*0.02;if(nm<bestScore){bestScore=nm;bestLen=L;}}
+    }
+    var key=new Uint8Array(bestLen),col,i;
+    for(col=0;col<bestLen;col++){
+      var sub=[];for(i=col;i<bytes.length;i+=bestLen)sub.push(bytes[i]);
+      var bestK=0,best=-1e9,k;
+      for(k=0;k<256;k++){var pr=0,lt=0,j,c;
+        for(j=0;j<sub.length;j++){c=sub[j]^k;
+          if(c===32||c===10||(c>=65&&c<=90)||(c>=97&&c<=122)){pr++;if(c!==32&&c!==10)lt++;}}
+        var f=pr/sub.length+0.4*(lt/sub.length);if(f>best){best=f;bestK=k;}}
+      key[col]=bestK;
+    }
+    var out=new Uint8Array(bytes.length);for(i=0;i<bytes.length;i++)out[i]=bytes[i]^key[i%bestLen];
+    return {name:'Repeating-key XOR',pt:cnBytesToText(out),perChar:cnByteFitness(out),
+      note:'key length '+bestLen+' · key "'+cnBytesToText(key).replace(/[^\x20-\x7e]/g,'·')+'"'};
+  }
+  function cnBytesToText(b){var s='',i;for(i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return s;}
+
+  // ---------- orchestrator ----------
+  function cnRender(gate,results){
+    var gs=document.getElementById('cnGateStage'),rs=document.getElementById('cnResStage');
+    gs.style.display='';var gd=document.getElementById('cnGate');
+    var cls=gate.attack?'weak':'strong';
+    gd.innerHTML=
+      '<div class="g"><span class="gk">MB novelty</span><span class="gv">'+gate.novelty.toFixed(3)+' / 1.00</span></div>'+
+      '<div class="g"><span class="gk">Shannon entropy</span><span class="gv">'+gate.entropy.toFixed(2)+' bits/byte'+
+        (gate.entRatio!=null?' <span style="color:var(--faint)">('+(gate.entRatio*100).toFixed(0)+'% of the '+
+          'length ceiling)</span>':'')+'</span></div>'+
+      '<div class="g"><span class="gk">index of coincidence</span><span class="gv">'+gate.ic.toFixed(4)+
+        ' <span style="color:var(--faint)">(English ≈ 0.067, random ≈ 0.038)</span></span></div>'+
+      '<div class="verdict '+cls+'">'+gate.verdict+'</div>';
+    if(!results){rs.style.display='none';document.getElementById('cnResults').innerHTML='';return;}
+    rs.style.display='';
+    // rank with a complexity prior: substitution has 26! freedom and overfits short
+    // texts, so it must clear a higher bar there before it outranks a simple shift.
+    results.forEach(function(R){var pen=0;
+      if(/substitution/i.test(R.name))pen=Math.max(0,(140-R.pt.length)/140)*2.2;
+      else if(/Vigen/i.test(R.name))pen=0.15;
+      R.rank=R.perChar-pen;});
+    results.sort(function(a,b){return b.rank-a.rank;});
+    var html='',i;
+    for(i=0;i<results.length;i++){var R=results[i],conf=cnConf(R.perChar),win=i===0&&conf>0.35;
+      html+='<div class="cnr'+(win?' win':'')+'">'+
+        '<div class="cnh"><b>'+R.name+(win?' — best guess':'')+'</b><span>'+(conf*100).toFixed(0)+'% confidence</span></div>'+
+        '<div class="cnpt">'+cnEsc(R.pt.slice(0,240))+(R.pt.length>240?'…':'')+'</div>'+
+        '<div class="cnbar"><i style="width:'+(conf*100).toFixed(0)+'%"></i></div>'+
+        '<div class="cnnote">'+cnEsc(R.note)+'</div></div>';
+    }
+    document.getElementById('cnResults').innerHTML=html;
+  }
+  function cnEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function cnDecode(){
+    var raw=document.getElementById('cnIn').value||'';
+    if(!raw.trim()){cnRender({novelty:1,entropy:0,ic:0,attack:false,verdict:'Nothing to analyze — paste some ciphertext.'},null);return;}
+    var P=cnParse(raw),bytes=P.bytes;
+    var nov=cnNovelty(bytes),H=cnEntropy(bytes),ic=cnIC(bytes);
+    // Entropy is capped by length -- 48 bytes can never exceed log2(48)=5.58 bits/byte,
+    // so an absolute threshold would call every short random blob "not random". Judge
+    // entropy against its own length ceiling instead. (Same trap as the MCV estimator.)
+    var ceil=Math.log2(Math.min(256,bytes.length)),entRatio=ceil>0?H/ceil:0;
+    // modern/strong: maximally novel AND at its entropy ceiling AND coincidence at the
+    // random floor. Any one of these failing means there is structure to attack.
+    var strong = nov>0.55 && entRatio>0.90 && ic<0.045 && bytes.length>=24;
+    var gate={novelty:nov,entropy:H,entRatio:entRatio,ic:ic,attack:!strong};
+    if(strong){
+      gate.verdict='No exploitable structure. Novelty is near maximal, entropy is at the '+
+        'ceiling, and letter coincidence is at the random floor — the signature of a modern '+
+        'cipher (AES, ChaCha) or already-random data. The brain will not pretend to crack this. '+
+        'That refusal is the honest result: there is nothing here to grip.';
+      cnRender(gate,null);
+      logLine('cryptanalysis :: NO STRUCTURE — ATTACK ABORTED (novelty '+nov.toFixed(2)+')','a');
+      return;
+    }
+    var results=[];
+    if(P.kind==='text'){
+      var L=cnLetters(P.text);
+      if(L.length>=6){
+        results.push(cnCaesar(L));results.push(cnAtbash(L));
+        var sub=cnSubst(L);if(sub)results.push(sub);
+        var vig=cnVigenere(L);if(vig)results.push(vig);
+      }
+      // also try XOR in case it is text-encoded bytes
+      if(!L.length||L.length<bytes.length*0.6){
+        results.push(cnXorSingle(bytes));var xr=cnXorRepeat(bytes);if(xr)results.push(xr);
+      }
+    }else{
+      results.push(cnXorSingle(bytes));var xr2=cnXorRepeat(bytes);if(xr2)results.push(xr2);
+      // a byte blob might still be a caesar/substitution of text mis-detected; try letters too
+      var tl=cnLetters(cnBytesToText(bytes));if(tl.length>=40){var s2=cnSubst(tl);if(s2)results.push(s2);}
+    }
+    results=results.filter(Boolean);
+    gate.verdict='Structure detected — the gate is open. Novelty is below the random baseline, '+
+      'so windows recur and there is something to exploit. Running the classical solvers.';
+    cnRender(gate,results);
+    var top=results.slice().sort(function(a,b){return b.perChar-a.perChar;})[0];
+    logLine('cryptanalysis :: '+results.length+' methods · best = '+(top?top.name:'none')+
+      ' ('+(top?(cnConf(top.perChar)*100).toFixed(0):'0')+'%)');
+  }
+  var CN_SAMPLES=[
+    // a Caesar shift of a plain sentence
+    function(){var p="the mushroom body is a novelty detector not a codebreaker";var o='';for(var i=0;i<p.length;i++){var c=p.charCodeAt(i);o+=(c>=97&&c<=122)?String.fromCharCode((c-97+7)%26+97):p[i];}return o;},
+    // a substitution cipher
+    function(){var perm="qwertyuiopasdfghjklzxcvbnm";var p="we hold these truths to be self evident that all people are created equal and endowed with certain unalienable rights among these the right to think freely and to build tools that tell the honest truth";var o='';for(var i=0;i<p.length;i++){var c=p.charCodeAt(i);o+=(c>=97&&c<=122)?perm[c-97]:p[i];}return o;},
+    // a Vigenère cipher
+    function(){var key="liberty";var p="we hold these truths to be self evident that all people are created equal and endowed by their creator with certain unalienable rights and that honest tools should say plainly what they can and cannot do";var o='';var ki=0;for(var i=0;i<p.length;i++){var c=p.charCodeAt(i);if(c>=97&&c<=122){o+=String.fromCharCode((c-97+(key.charCodeAt(ki%key.length)-97))%26+97);ki++;}else o+=p[i];}return o;},
+    // repeating-key XOR, shown as hex
+    function(){var key=[0x4b,0x65,0x79];var p="the only secret that ever really expires is one nobody wrote down and this line proves the point about repeating key xor being weak";var s='';for(var i=0;i<p.length;i++){var v=p.charCodeAt(i)^key[i%3];s+=(v<16?'0':'')+v.toString(16);}return s;},
+    // AES-GCM style random (the honest refusal case) -- just random bytes as hex
+    function(){var b=new Uint8Array(48);crypto.getRandomValues(b);var s='';for(var i=0;i<b.length;i++)s+=(b[i]<16?'0':'')+b[i].toString(16);return s;}
+  ];
+  var CN_SI=0;
+  function cnSample(){var f=CN_SAMPLES[CN_SI%CN_SAMPLES.length];CN_SI++;
+    document.getElementById('cnIn').value=f();
+    document.getElementById('cnGate').innerHTML='';document.getElementById('cnResults').innerHTML='';
+    document.getElementById('cnGateStage').style.display='none';document.getElementById('cnResStage').style.display='none';}
+
+
+  /* ══════════════════════════════════════════════════════════════════════════
      KEYED.CHANNEL — a pre-shared-key message box built on the extractor.
 
      AES-256-GCM from SubtleCrypto (audited, constant-time) rather than anything
@@ -2888,6 +3307,13 @@
     document.getElementById('chDec').addEventListener('click',chDecrypt);
     document.getElementById('chCopy').addEventListener('click',chCopyBlob);
     document.getElementById('chClear').addEventListener('click',chClear);
+    document.getElementById('cnGo').addEventListener('click',cnDecode);
+    document.getElementById('cnDemo').addEventListener('click',cnSample);
+    document.getElementById('cnClr').addEventListener('click',function(){
+      document.getElementById('cnIn').value='';document.getElementById('cnGate').innerHTML='';
+      document.getElementById('cnResults').innerHTML='';
+      document.getElementById('cnGateStage').style.display='none';
+      document.getElementById('cnResStage').style.display='none';});
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
