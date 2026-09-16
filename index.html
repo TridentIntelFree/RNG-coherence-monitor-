@@ -604,7 +604,8 @@
       placeholder="Paste a SYNCWK1. blob, or build one below and watch the fly brain collapse its keyspace."></textarea>
     <div id="kwDetect" class="krdet"></div>
     <div class="sdf" style="margin-top:8px">
-      <button id="kwGo" class="cbtn" type="button">🧠 Collapse keyspace</button>
+      <button id="kwGo" class="cbtn" type="button">↦ Collapse (linear)</button>
+      <button id="kwSmash" class="cbtn" type="button">🧠 Smash (guided)</button>
       <button id="kwStop" class="cbtn danger" type="button" disabled>■ Stop</button>
     </div>
     <div id="kwStats" class="krstats"></div>
@@ -617,6 +618,10 @@
         <option value="t86400" selected>clock seed · last day (2^16.4)</option>
         <option value="i16">16-bit integer seed (2^16)</option>
         <option value="i20">20-bit integer seed (2^20)</option>
+        <option value="hpin">human · PIN, declared 2^32 (linear gives up)</option>
+        <option value="hbday">human · birthday, declared 2^32</option>
+        <option value="hconst">human · culture constant, declared 2^32</option>
+        <option value="hts">human · recent timestamp, declared 2^32</option>
         <option value="strong">CSPRNG · real entropy (untouchable)</option>
       </select>
     </div>
@@ -3134,6 +3139,96 @@
   }
 
 
+
+  /* ---------- the guided smasher: model how seeds are really chosen ----------
+     You cannot hill-climb a good keystream -- a near-miss key gives fully random
+     output, no warmer/colder signal (that is the avalanche property). So the
+     fly brain does not descend a gradient; it GUESSES IN ORDER, most-likely
+     first, by modelling how humans and systems actually pick seeds. Against a
+     real CSPRNG seed the model gives no advantage and says so; against a PIN, a
+     birthday, a culture constant, a round number or a recent clock read, it wins
+     by four to nine orders of magnitude over a blind scan. */
+  function* kwSeedModel(){
+    var seen=new Set(),CAPSET=3000000,i,s;
+    function seed(v){v=v>>>0;if(seen.size<CAPSET){if(seen.has(v))return null;seen.add(v);}return v;}
+    var COMMON_PIN=[1234,1111,0,1212,7777,1004,2000,4444,2222,6969,9999,3333,5555,6666,1122,1313,8888,4321,2001,1010];
+    for(i=0;i<COMMON_PIN.length;i++){s=seed(COMMON_PIN[i]);if(s!=null)yield s;}
+    var CONST=[42,1337,666,777,7,13,69,420,80085,8675309,90210,101,1000000,2147483647,
+      0xDEADBEEF,0xCAFEBABE,0x12345678,0xBADC0DE,0xB00B5,314159,3141592,2718281,1618033,
+      123456789,987654321,11111111,12341234,10101010,12121212];
+    for(i=0;i<CONST.length;i++){s=seed(CONST[i]);if(s!=null)yield s;}
+    for(i=0;i<=9999;i++){s=seed(i);if(s!=null)yield s;}                       // all 4-digit PINs
+    var len,dg,asc,desc,k;
+    for(len=2;len<=8;len++){asc='';desc='';for(k=0;k<len;k++){asc+=((k+1)%10);desc+=((9-k+10)%10);}
+      for(dg=0;dg<=9;dg++){s=seed(+String(dg).repeat(len));if(s!=null)yield s;}
+      s=seed(+asc);if(s!=null)yield s;s=seed(+desc);if(s!=null)yield s;}
+    var y,mo,d;
+    for(y=1900;y<=2035;y++){s=seed(y);if(s!=null)yield s;}
+    for(y=1940;y<=2035;y++)for(mo=1;mo<=12;mo++)for(d=1;d<=31;d++){
+      s=seed(y*10000+mo*100+d);if(s!=null)yield s;
+      s=seed(mo*1000000+d*10000+y);if(s!=null)yield s;
+      s=seed(d*1000000+mo*10000+y);if(s!=null)yield s;
+      s=seed((y%100)*10000+mo*100+d);if(s!=null)yield s;}
+    for(mo=1;mo<=12;mo++)for(d=1;d<=31;d++){s=seed(mo*100+d);if(s!=null)yield s;s=seed(d*100+mo);if(s!=null)yield s;}
+    var base,m;
+    for(k=1;k<=9;k++){base=Math.pow(10,k);for(m=1;m<=99;m++){s=seed(m*base);if(s!=null)yield s;}}
+    for(k=1;k<=31;k++){s=seed(Math.pow(2,k));if(s!=null)yield s;}
+    for(i=10000;i<=100000;i++){s=seed(i);if(s!=null)yield s;}
+    var now=Math.floor(Date.now()/1000),t,win=604800;                          // recent seconds, newest first
+    for(t=now;t>now-win;t--){s=seed(t);if(s!=null)yield s;}
+    var day;for(day=0;day<1830;day++){s=seed(now-day*86400-(now%86400));if(s!=null)yield s;} // midnight-of-day
+  }
+  function kwSmashFinish(seed,tried,dec){
+    KW.running=false;
+    document.getElementById('kwGo').disabled=false;document.getElementById('kwSmash').disabled=false;document.getElementById('kwStop').disabled=true;
+    var r=document.getElementById('kwResult'),blind=Math.pow(2,32)/2;
+    if(seed!=null){var x=blind/tried;
+      r.innerHTML='<div class="hit">SMASHED · seed <b>'+kwEsc(''+seed)+'</b> at guess <b>#'+tried.toLocaleString()+'</b>'+
+        '<div style="margin-top:6px;color:var(--txt)">recovered plaintext: “'+kwEsc(new TextDecoder().decode(dec))+'”</div>'+
+        '<div style="margin-top:6px;font-size:10px;color:var(--dim)">The fly brain guessed the way the seed was actually chosen and found it in '+tried.toLocaleString()+
+        ' tries. A blind scan of the 2³² space would average ~'+x.toExponential(1)+'× more. This works <b>only</b> because the seed was human- or system-patterned — that is the lesson.</div></div>';
+      logLine('keyspace :: SMASHED via model at guess #'+tried.toLocaleString());}
+    else{r.innerHTML='<div class="miss">UNBROKEN after '+tried.toLocaleString()+' modelled guesses. The seed matches no human or system pattern the brain knows — which is what a real CSPRNG seed looks like. Guided search gives no advantage here, and that is the honest result.</div>';
+      logLine('keyspace :: model exhausted, UNBROKEN after '+tried.toLocaleString(),'a');}
+  }
+  function kwSmashStart(){
+    if(KW.running)return;
+    var b=kwParse(document.getElementById('kwTarget').value);
+    if(!b){document.getElementById('kwResult').innerHTML='<div class="miss">Paste or build a SYNCWK1. blob first.</div>';return;}
+    KW.running=true;KW.t0=Date.now();
+    document.getElementById('kwGo').disabled=true;document.getElementById('kwSmash').disabled=true;document.getElementById('kwStop').disabled=false;
+    document.getElementById('kwResult').innerHTML='';
+    var gen=kwSeedModel(),tried=0,CAP=3000000;
+    function tick(){
+      if(!KW.running){kwSmashFinish(null,tried);return;}
+      var budget=6000,i,nx,seed,dec;
+      for(i=0;i<budget;i++){
+        nx=gen.next();
+        if(nx.done||tried>=CAP){kwStat('model exhausted',tried,Math.pow(2,32));return kwSmashFinish(null,tried);}
+        seed=nx.value;tried++;
+        dec=chacha20(kwKey(seed),b.nonce,1,b.ct);
+        if(kwPrint(dec)>1.0&&kwFam(dec)>0.12){kwStat('found',tried,Math.pow(2,32));return kwSmashFinish(seed,tried,dec);}
+      }
+      kwStat('guided · modelling how the seed was chosen',tried,Math.pow(2,32));
+      setTimeout(tick,0);
+    }
+    tick();
+  }
+  function kwBlobFromSeed(seed,gentype,param,pt){
+    var key=kwKey(seed),nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
+    var ct=chacha20(key,nonce,1,new TextEncoder().encode(pt));
+    var hdr=new Uint8Array(5);hdr[0]=gentype;
+    hdr[1]=(param>>>24)&255;hdr[2]=(param>>>16)&255;hdr[3]=(param>>>8)&255;hdr[4]=param&255;
+    return 'SYNCWK1.'+toB64(cat([hdr,nonce,ct]));
+  }
+  function kwHumanSeed(style){
+    if(style==='pin')return [1234,1111,7777,4321,2580][(Math.random()*5)|0];
+    if(style==='birthday'){var y=1955+((Math.random()*50)|0),mo=1+((Math.random()*12)|0),d=1+((Math.random()*28)|0);return y*10000+mo*100+d;}
+    if(style==='const')return [0xDEADBEEF>>>0,1337,8675309,314159,42][(Math.random()*5)|0];
+    if(style==='ts')return Math.floor(Date.now()/1000)-((Math.random()*86400)|0);
+    return 12345;
+  }
+
   /* ══════════════════════════════════════════════════════════════════════════
      KEYED.CHANNEL — a pre-shared-key message box built on the extractor.
 
@@ -3820,8 +3915,12 @@
       if(v==='strong'){gentype=2;param=0;}
       else if(v[0]==='t'){gentype=1;param=parseInt(v.slice(1),10);}
       else{gentype=0;param=parseInt(v.slice(1),10);}
+      if(v[0]==='h'){var style={hpin:'pin',hbday:'birthday',hconst:'const',hts:'ts'}[v];
+        document.getElementById('kwTarget').value=kwBlobFromSeed(kwHumanSeed(style),0,32,pt);kwDetect();
+        logLine('keyspace :: SYNCWK1 blob built (human '+style+', declared 2^32)');return;}
       document.getElementById('kwTarget').value=kwMakeBlob(gentype,param,pt);kwDetect();
       logLine('keyspace :: SYNCWK1 blob built ('+v+')');});
+    document.getElementById('kwSmash').addEventListener('click',kwSmashStart);
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
