@@ -201,6 +201,19 @@
   .cnr .cnnote{font-size:9.5px;color:var(--faint);margin-top:5px}
   .cnbar{height:4px;border-radius:2px;background:rgba(0,255,102,.12);margin-top:6px;overflow:hidden}
   .cnbar>i{display:block;height:100%;background:var(--grn)}
+  .krlab{display:block;font-size:10px;letter-spacing:.1em;color:var(--dim);margin:4px 0 4px}
+  .krdet{font-size:10px;color:var(--faint);min-height:13px;margin-top:4px}
+  .krdet b{color:var(--txt)}
+  .krck{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt)}
+  .krstats{font-size:11px;line-height:1.7;margin-top:8px;color:var(--dim)}
+  .krstats .s{display:flex;gap:8px;justify-content:space-between}
+  .krstats .s b{color:var(--bright)}
+  .krres{margin-top:8px;font-size:12px}
+  .krres .hit{border:1px solid var(--grndim);border-radius:5px;padding:9px 11px;color:var(--grn);box-shadow:inset 0 0 22px -14px var(--grn)}
+  .krres .hit b{color:var(--bright);font-size:14px}
+  .krres .miss{border:1px solid var(--edge);border-radius:5px;padding:9px 11px;color:var(--amber)}
+  .krbar{height:5px;border-radius:3px;background:rgba(0,255,102,.1);margin-top:7px;overflow:hidden}
+  .krbar>i{display:block;height:100%;background:var(--grn);width:0}
   .ldg.tot span:first-child{color:var(--grn)}
   .ratchet{display:flex;gap:5px;align-items:center;margin:8px 0 4px;flex-wrap:wrap}
   .rk{font-size:15px;line-height:1}
@@ -498,6 +511,70 @@
       any cipher in current use. It exists to show, concretely, the gap between a cipher
       that leaks structure and one that does not — which is the whole reason the entropy
       work on this page matters.
+    </div>
+  </div>
+
+  <div class="term panel" id="krPanel">
+    <div class="ptop"><div class="ptitle">> KEY.RECOVERY<b>.brute</b></div><div class="pmeta" id="krMeta">real attack · runs in this tab</div></div>
+
+    <div class="vow">
+      <div class="vowh">A real password attack — the honest kind</div>
+      <div class="hint" style="margin-top:6px">
+        This does not break ciphers. It breaks <b>weak passwords</b>, which is the one
+        place a decryptor genuinely succeeds against real encryption — because the
+        weakness is the human secret, not the algorithm. Paste a <b>real hash</b>
+        (MD5, SHA-1, or SHA-256) or a <b>real password-encrypted blob</b> and it runs
+        an actual dictionary → mangling-rules → brute-force attack. Weak secrets fall
+        and you see the password; strong ones don't, and you see exactly how far it got.
+        No progress theatre: a random key or a long passphrase will not be found here,
+        and the counter will tell you so.
+      </div>
+    </div>
+
+    <label class="krlab" for="krTarget">Target — a hash, or a <code>SYNCPW1.</code> blob</label>
+    <textarea id="krTarget" class="sdta" autocomplete="off" spellcheck="false" style="min-height:52px"
+      placeholder="Paste a real MD5/SHA-1/SHA-256 hash, or a SYNCPW1. blob. Or build one to test, below."></textarea>
+    <div id="krDetect" class="krdet"></div>
+
+    <div class="sdf" style="margin-top:8px;flex-wrap:wrap">
+      <label class="krck"><input type="checkbox" id="krLower" checked> a–z</label>
+      <label class="krck"><input type="checkbox" id="krUpper"> A–Z</label>
+      <label class="krck"><input type="checkbox" id="krDigit" checked> 0–9</label>
+      <label class="krck"><input type="checkbox" id="krSym"> !@#…</label>
+      <label class="krck" style="flex:1">brute length ≤ <b id="krLenV">4</b>
+        <input id="krLen" type="range" min="1" max="6" value="4" step="1" style="width:100%;accent-color:var(--grn)"></label>
+    </div>
+    <div class="sdf">
+      <button id="krGo" class="cbtn" type="button">⚔ Attack</button>
+      <button id="krStop" class="cbtn danger" type="button" disabled>■ Stop</button>
+    </div>
+
+    <div id="krStats" class="krstats"></div>
+    <div id="krResult" class="krres"></div>
+
+    <div class="stage">build a target to test <b>· so you can watch weak vs strong</b></div>
+    <div class="sdf">
+      <input id="krPw" class="sdin" placeholder="a password to protect with" autocomplete="off" spellcheck="false">
+      <input id="krPt" class="sdin" placeholder="secret text (for a blob)" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="sdf">
+      <button id="krMkHash" class="cbtn" type="button">→ SHA-256 hash</button>
+      <button id="krMkBlob" class="cbtn" type="button">→ encrypt blob</button>
+    </div>
+    <div class="hint">Try a common word, then try ten random characters. The first falls in
+      milliseconds; the second exhausts the counter and stays sealed. That contrast is the
+      whole point of the entropy work on this page.</div>
+
+    <div class="danger-note">
+      <b>What it is.</b> A genuine brute-force / dictionary attacker, run entirely in this
+      tab on input you provide. It is the same idea as hashcat or John the Ripper, at
+      browser speed. It exists to make one thing concrete: a weak password is not
+      protected by any amount of good cipher, and a strong one needs no help.
+      <br><br>
+      <b>What it is not.</b> Not a way into anyone else's account or data — a hash or blob
+      you did not make yourself is not yours to attack, and browser-speed brute force
+      would not get there regardless. It will never find a random key. If it could, the
+      key would not be worth using.
     </div>
   </div>
 
@@ -2654,6 +2731,219 @@
 
 
   /* ══════════════════════════════════════════════════════════════════════════
+     KEY.RECOVERY — a real dictionary/brute-force attacker.
+
+     This does not attack ciphers; it attacks weak PASSWORDS, which is the one
+     place a decryptor genuinely wins against real encryption. Two checkers share
+     one candidate engine (dictionary -> mangling rules -> brute force):
+       - hashes: MD5 / SHA-1 / SHA-256 of the candidate, compared to the target;
+       - blobs:  PBKDF2-SHA-256 -> AES-256-GCM, decrypted and tag-verified.
+
+     It is honest by construction. PBKDF2 is deliberately slow, so the blob
+     attack runs at tens of guesses a second and the counter shows it. A random
+     key or a long passphrase exhausts the search and is reported unbroken --
+     never a fake progress bar creeping toward a success that cannot come.
+     ══════════════════════════════════════════════════════════════════════════ */
+  // --- sync MD5 (for the hash attack loop; SHA-256 reuses the page's sha256) ---
+  function krMd5(bytes){
+    function rl(x,c){return (x<<c)|(x>>>(32-c));}
+    var len=bytes.length,i,bitLen=len*8,b=[];
+    for(i=0;i<len;i++)b.push(bytes[i]&255);
+    b.push(0x80);while(b.length%64!==56)b.push(0);
+    for(i=0;i<8;i++){b.push(bitLen&255);bitLen=Math.floor(bitLen/256);}
+    if(!krMd5.K){krMd5.K=[];for(i=0;i<64;i++)krMd5.K[i]=(Math.floor(Math.abs(Math.sin(i+1))*4294967296))|0;}
+    var K=krMd5.K,
+    S=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+       4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+    var a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476,off;
+    for(off=0;off<b.length;off+=64){
+      var M=[];for(i=0;i<16;i++)M[i]=b[off+i*4]|(b[off+i*4+1]<<8)|(b[off+i*4+2]<<16)|(b[off+i*4+3]<<24);
+      var A=a0,B=b0,C=c0,D=d0,F,g;
+      for(i=0;i<64;i++){
+        if(i<16){F=(B&C)|(~B&D);g=i;}
+        else if(i<32){F=(D&B)|(~D&C);g=(5*i+1)%16;}
+        else if(i<48){F=B^C^D;g=(3*i+5)%16;}
+        else{F=C^(B|~D);g=(7*i)%16;}
+        F=(F+A+K[i]+M[g])|0;A=D;D=C;C=B;B=(B+rl(F,S[i]))|0;}
+      a0=(a0+A)|0;b0=(b0+B)|0;c0=(c0+C)|0;d0=(d0+D)|0;
+    }
+    function hx(n){var s='',j,x;for(j=0;j<4;j++){x=(n>>>(j*8))&255;s+=(x<16?'0':'')+x.toString(16);}return s;}
+    return hx(a0)+hx(b0)+hx(c0)+hx(d0);
+  }
+  function krSha1(bytes){
+    function rl(n,s){return (n<<s)|(n>>>(32-s));}
+    var ml=bytes.length*8,b=[],i;for(i=0;i<bytes.length;i++)b.push(bytes[i]&255);
+    b.push(0x80);while(b.length%64!==56)b.push(0);
+    for(i=7;i>=0;i--)b.push((Math.floor(ml/Math.pow(2,i*8)))&255);
+    var h0=0x67452301,h1=0xEFCDAB89,h2=0x98BADCFE,h3=0x10325476,h4=0xC3D2E1F0,off;
+    for(off=0;off<b.length;off+=64){
+      var w=[];for(i=0;i<16;i++)w[i]=(b[off+i*4]<<24)|(b[off+i*4+1]<<16)|(b[off+i*4+2]<<8)|b[off+i*4+3];
+      for(i=16;i<80;i++)w[i]=rl(w[i-3]^w[i-8]^w[i-14]^w[i-16],1);
+      var a=h0,bb=h1,c=h2,d=h3,e=h4,f,k,t;
+      for(i=0;i<80;i++){
+        if(i<20){f=(bb&c)|(~bb&d);k=0x5A827999;}
+        else if(i<40){f=bb^c^d;k=0x6ED9EBA1;}
+        else if(i<60){f=(bb&c)|(bb&d)|(c&d);k=0x8F1BBCDC;}
+        else{f=bb^c^d;k=0xCA62C1D6;}
+        t=(rl(a,5)+f+e+k+w[i])|0;e=d;d=c;c=rl(bb,30);bb=a;a=t;}
+      h0=(h0+a)|0;h1=(h1+bb)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;
+    }
+    function hx(n){var s=(n>>>0).toString(16);while(s.length<8)s='0'+s;return s;}
+    return hx(h0)+hx(h1)+hx(h2)+hx(h3)+hx(h4);
+  }
+  function krHash(algo,str){
+    var bytes=new TextEncoder().encode(str);
+    if(algo==='md5')return krMd5(bytes);
+    if(algo==='sha1')return krSha1(bytes);
+    return toHex(sha256(bytes));                       // sha256 already in the page
+  }
+
+  // --- the shared candidate engine ---
+  var KR_WORDS=['password','123456','12345678','qwerty','123456789','12345','1234','111111',
+   'letmein','dragon','monkey','football','iloveyou','admin','welcome','login','abc123','princess',
+   'master','hello','freedom','whatever','trustno1','sunshine','shadow','superman','batman','summer',
+   'winter','orange','purple','cheese','ninja','secret','flower','matrix','hunter','soccer','harley',
+   'ranger','buster','thomas','george','computer','michelle','jordan','tigger','robert','jennifer',
+   'hockey','charlie','andrew','love','pass','root','test','guest','changeme','baseball','starwars',
+   'liverpool','arsenal','chelsea','pokemon','naruto','minecraft','samsung','google','apple','qwertyuiop'];
+  function* krRules(w){
+    yield w; if(w.length)yield w[0].toUpperCase()+w.slice(1); yield w.toUpperCase();
+    yield w+'1';yield w+'12';yield w+'123';yield w+'1234';yield w+'!';yield w+'?';yield w+'.';
+    yield w+'2025';yield w+'2024';yield w+'2023';yield w+'01';yield '1'+w;
+    var leet=w.replace(/a/g,'@').replace(/o/g,'0').replace(/e/g,'3').replace(/i/g,'1').replace(/s/g,'$');
+    if(leet!==w){yield leet;yield leet+'1';yield leet+'!';}
+    for(var d=0;d<100;d++)yield w+d;
+  }
+  function* krDict(){var i,c;for(i=0;i<KR_WORDS.length;i++){var it=krRules(KR_WORDS[i]),r;while(!(r=it.next()).done)yield r.value;}}
+  function* krBrute(charset,maxLen){
+    var cs=charset.split('');
+    function* rec(pre,depth){if(depth===0){yield pre;return;}
+      for(var i=0;i<cs.length;i++)yield* rec(pre+cs[i],depth-1);}
+    for(var L=1;L<=maxLen;L++)yield* rec('',L);
+  }
+  function krCharset(){
+    var s='';
+    if(document.getElementById('krLower').checked)s+='abcdefghijklmnopqrstuvwxyz';
+    if(document.getElementById('krUpper').checked)s+='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    if(document.getElementById('krDigit').checked)s+='0123456789';
+    if(document.getElementById('krSym').checked)s+='!@#$%^&*_-.?';
+    return s;
+  }
+  function* krCandidates(charset,maxLen){yield* krDict();if(charset&&maxLen>0)yield* krBrute(charset,maxLen);}
+
+  // --- blob format: SYNCPW1.<b64url( salt[16] | iters(4 BE) | nonce[12] | ct+tag )> ---
+  function krParseBlob(t){
+    var m=String(t).trim().match(/SYNCPW1\.([A-Za-z0-9\-_=]+)/);if(!m)return null;
+    var raw;try{raw=fromB64(m[1]);}catch(e){return null;}
+    if(raw.length<16+4+12+16)return null;
+    return {salt:raw.slice(0,16),
+      iters:((raw[16]<<24)|(raw[17]<<16)|(raw[18]<<8)|raw[19])>>>0,
+      nonce:raw.slice(20,32),body:raw.slice(32)};
+  }
+  function krPbkdf2Key(pw,salt,iters){
+    return crypto.subtle.importKey('raw',new TextEncoder().encode(pw),{name:'PBKDF2'},false,['deriveKey'])
+      .then(function(k){return crypto.subtle.deriveKey(
+        {name:'PBKDF2',salt:salt,iterations:iters,hash:'SHA-256'},k,
+        {name:'AES-GCM',length:256},false,['decrypt','encrypt']);});
+  }
+  function krMakeBlob(pw,pt){
+    var salt=new Uint8Array(16);crypto.getRandomValues(salt);
+    var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
+    var iters=150000;
+    return krPbkdf2Key(pw,salt,iters).then(function(key){
+      return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce},key,new TextEncoder().encode(pt));
+    }).then(function(ctb){
+      var hdr=new Uint8Array(20);hdr.set(salt,0);
+      hdr[16]=(iters>>>24)&255;hdr[17]=(iters>>>16)&255;hdr[18]=(iters>>>8)&255;hdr[19]=iters&255;
+      return 'SYNCPW1.'+toB64(cat([hdr,nonce,new Uint8Array(ctb)]));
+    });
+  }
+
+  // --- the runner ---
+  var KR={running:false,tried:0,t0:0,gen:null,mode:null};
+  function krDetect(){
+    var t=document.getElementById('krTarget').value.trim(),d=document.getElementById('krDetect');
+    var blob=krParseBlob(t);
+    if(blob){d.innerHTML='detected: <b>password-encrypted blob</b> · PBKDF2 '+blob.iters.toLocaleString()+
+      ' iters · AES-256-GCM · '+blob.body.length+'-byte body';return {mode:'blob',blob:blob};}
+    var hx=t.replace(/^0x/,'').toLowerCase();
+    if(/^[0-9a-f]+$/.test(hx)){
+      if(hx.length===32){d.innerHTML='detected: <b>MD5 hash</b>';return {mode:'hash',algo:'md5',target:hx};}
+      if(hx.length===40){d.innerHTML='detected: <b>SHA-1 hash</b>';return {mode:'hash',algo:'sha1',target:hx};}
+      if(hx.length===64){d.innerHTML='detected: <b>SHA-256 hash</b>';return {mode:'hash',algo:'sha256',target:hx};}
+    }
+    d.innerHTML=t?'unrecognized — expected a 32/40/64-hex hash or a SYNCPW1. blob':'';
+    return null;
+  }
+  function krStat(phase,extra){
+    var el=document.getElementById('krStats'),el2;
+    var dt=(Date.now()-KR.t0)/1000,rate=dt>0?KR.tried/dt:0;
+    el.innerHTML='<div class="s"><span>phase</span><b>'+phase+'</b></div>'+
+      '<div class="s"><span>candidates tried</span><b>'+KR.tried.toLocaleString()+'</b></div>'+
+      '<div class="s"><span>rate</span><b>'+(rate>=1?Math.round(rate).toLocaleString()+' /s':rate.toFixed(1)+' /s')+'</b></div>'+
+      '<div class="s"><span>elapsed</span><b>'+dt.toFixed(1)+' s</b></div>'+(extra||'');
+  }
+  function krFinish(hit,pt){
+    KR.running=false;
+    document.getElementById('krGo').disabled=false;document.getElementById('krStop').disabled=true;
+    var r=document.getElementById('krResult');
+    if(hit){r.innerHTML='<div class="hit">RECOVERED · <b>'+krEsc(hit)+'</b>'+
+      (pt!=null?'<div style="margin-top:6px;color:var(--txt)">decrypted plaintext: “'+krEsc(pt)+'”</div>':'')+
+      '<div style="margin-top:6px;font-size:10px;color:var(--dim)">A weak secret is protected by no cipher. This is why the entropy work matters.</div></div>';
+      logLine('key.recovery :: CRACKED after '+KR.tried.toLocaleString()+' tries');}
+    else{r.innerHTML='<div class="miss">UNBROKEN after '+KR.tried.toLocaleString()+' candidates. '+
+      'The dictionary, the mangling rules and the chosen brute-force space are exhausted or were stopped. '+
+      'A random key or a long passphrase lives here — and stays sealed. That is the honest result, not a failure of effort.</div>';
+      logLine('key.recovery :: UNBROKEN after '+KR.tried.toLocaleString()+' tries','a');}
+  }
+  function krEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function krStart(){
+    if(KR.running)return;
+    var det=krDetect();if(!det){document.getElementById('krResult').innerHTML=
+      '<div class="miss">Nothing to attack. Paste a hash or a SYNCPW1. blob, or build one below.</div>';return;}
+    KR.running=true;KR.tried=0;KR.t0=Date.now();
+    document.getElementById('krGo').disabled=true;document.getElementById('krStop').disabled=false;
+    document.getElementById('krResult').innerHTML='';
+    var charset=krCharset(),maxLen=+document.getElementById('krLen').value|0;
+    KR.gen=krCandidates(charset,maxLen);
+    if(det.mode==='hash')krRunHash(det.algo,det.target);
+    else krRunBlob(det.blob);
+  }
+  function krRunHash(algo,target){
+    function tick(){
+      if(!KR.running)return;
+      var budget=algo==='md5'?24000:12000,phase=KR.tried<KR_DICTSIZE?'dictionary + rules':'brute force';
+      for(var i=0;i<budget;i++){
+        var nx=KR.gen.next();if(nx.done){krStat(phase);return krFinish(null);}
+        KR.tried++;
+        if(krHash(algo,nx.value)===target){krStat(phase);return krFinish(nx.value);}
+      }
+      krStat(phase);setTimeout(tick,0);
+    }
+    tick();
+  }
+  function krRunBlob(blob){
+    var tagStart=blob.body.length-16,ct=blob.body.slice(0,tagStart);
+    function step(){
+      if(!KR.running)return;
+      var nx=KR.gen.next();if(nx.done){krStat('exhausted');return krFinish(null);}
+      var cand=nx.value;KR.tried++;
+      if(KR.tried%5===1)krStat(KR.tried<KR_DICTSIZE?'dictionary + rules':'brute force',
+        '<div class="s" style="color:var(--faint)"><span>trying</span><b>'+krEsc(cand.slice(0,24))+'</b></div>');
+      krPbkdf2Key(cand,blob.salt,blob.iters).then(function(key){
+        return crypto.subtle.decrypt({name:'AES-GCM',iv:blob.nonce},key,blob.body);
+      }).then(function(ptb){
+        krStat('found');krFinish(cand,new TextDecoder().decode(new Uint8Array(ptb)));
+      }).catch(function(){ if(KR.running)setTimeout(step,0); });
+    }
+    step();
+  }
+  var KR_DICTSIZE=0;                                    // filled at boot: size of the dictionary phase
+  function krCountDict(){var n=0,it=krDict();while(!it.next().done)n++;KR_DICTSIZE=n;}
+
+
+  /* ══════════════════════════════════════════════════════════════════════════
      KEYED.CHANNEL — a pre-shared-key message box built on the extractor.
 
      AES-256-GCM from SubtleCrypto (audited, constant-time) rather than anything
@@ -3314,6 +3604,22 @@
       document.getElementById('cnResults').innerHTML='';
       document.getElementById('cnGateStage').style.display='none';
       document.getElementById('cnResStage').style.display='none';});
+    krCountDict();
+    document.getElementById('krGo').addEventListener('click',krStart);
+    document.getElementById('krStop').addEventListener('click',function(){
+      KR.running=false;if(document.getElementById('krGo').disabled)krFinish(null);});
+    document.getElementById('krTarget').addEventListener('input',krDetect);
+    document.getElementById('krLen').addEventListener('input',function(){
+      document.getElementById('krLenV').textContent=this.value;});
+    document.getElementById('krMkHash').addEventListener('click',function(){
+      var pw=document.getElementById('krPw').value;if(!pw){logLine('key.recovery :: TYPE A PASSWORD FIRST','a');return;}
+      document.getElementById('krTarget').value=krHash('sha256',pw);krDetect();
+      logLine('key.recovery :: SHA-256 target built');});
+    document.getElementById('krMkBlob').addEventListener('click',function(){
+      var pw=document.getElementById('krPw').value,pt=document.getElementById('krPt').value||'the eagle lands at dawn';
+      if(!pw){logLine('key.recovery :: TYPE A PASSWORD FIRST','a');return;}
+      krMakeBlob(pw,pt).then(function(b){document.getElementById('krTarget').value=b;krDetect();
+        logLine('key.recovery :: SYNCPW1 blob built (PBKDF2 150k)');});});
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
