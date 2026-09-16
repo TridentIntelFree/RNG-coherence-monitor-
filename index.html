@@ -163,6 +163,22 @@
   .danger-note{border:1px solid rgba(255,77,94,.35);border-radius:5px;padding:9px 11px;margin-top:10px;
     background:rgba(40,0,6,.3);font-size:10.5px;color:#ffb3bb;line-height:1.6}
   .danger-note b{color:var(--red);font-weight:400;letter-spacing:.08em}
+  .dice{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+  .die{flex:1 1 auto;min-width:40px;padding:10px 0;border:1px solid var(--edge);border-radius:5px;
+    background:rgba(0,40,14,.4);color:var(--grn);font-family:var(--mono);font-size:16px;cursor:pointer}
+  .die:hover{background:rgba(0,255,102,.10)}
+  .die:active{background:rgba(0,255,102,.2)}
+  .die:focus-visible{outline:2px solid var(--grn);outline-offset:2px}
+  .net{display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.11em;
+    padding:3px 8px;border-radius:4px;border:1px solid var(--hair);text-transform:uppercase}
+  .net.on{color:var(--amber);border-color:rgba(255,210,63,.35)}
+  .net.off{color:var(--grn);border-color:rgba(0,255,102,.4)}
+  .net i{width:7px;height:7px;border-radius:50%;background:currentColor;display:block}
+  .warnbox{border:1px solid rgba(255,210,63,.45);border-radius:5px;padding:8px 10px;margin-top:9px;
+    background:rgba(40,30,0,.35);font-size:10.5px;color:var(--amber);line-height:1.55}
+  .share{font-size:10.5px;color:var(--bright);word-break:break-all;background:rgba(0,0,0,.5);
+    border:1px solid var(--hair);border-radius:4px;padding:6px 8px;margin-top:5px;user-select:all;line-height:1.5}
+  .share b{color:var(--fly);font-weight:400}
   #flyPanel{position:relative;overflow:hidden}
   #flyRain{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.30;border-radius:6px;
     -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.12) 30%,rgba(0,0,0,.12) 80%,#000 100%);
@@ -252,7 +268,8 @@
 
   <div class="term panel" id="seedPanel">
     <canvas id="seedRain" aria-hidden="true"></canvas>
-    <div class="ptop"><div class="ptitle">> SEED.EXTRACTOR</div><div class="pmeta" id="sdMeta">local only · never transmitted</div></div>
+    <div class="ptop"><div class="ptitle">> SEED.EXTRACTOR</div><div class="pmeta"><span class="net" id="netState"><i></i><span>checking…</span></span></div></div>
+    <div class="hint" id="sdMeta" style="margin-top:2px">local only · never transmitted</div>
 
     <div class="vow">
       <div class="vowh">What this does and does not do</div>
@@ -271,7 +288,19 @@
 
     <canvas id="sdPad" aria-label="Drag here to add entropy from your own movement"></canvas>
     <textarea id="sdta" class="sdta" autocomplete="off" autocorrect="off" spellcheck="false"
-      placeholder="Optional: type dice rolls or mash the keys. Only you know this. Hashed into the pool, never stored, never sent — cleared by Clear."></textarea>
+      placeholder="Optional: mash the keys. Only you know this. Hashed into the pool, never stored, never sent — cleared by Clear."></textarea>
+
+    <div class="stage">physical dice <b>· 2.585 bits per roll</b></div>
+    <div class="hint" id="diceHint">Roll a real d6 and press the face you rolled. Slow, and the only source an attacker genuinely cannot observe.</div>
+    <div class="dice">
+      <button class="die" type="button" data-d="1">1</button>
+      <button class="die" type="button" data-d="2">2</button>
+      <button class="die" type="button" data-d="3">3</button>
+      <button class="die" type="button" data-d="4">4</button>
+      <button class="die" type="button" data-d="5">5</button>
+      <button class="die" type="button" data-d="6">6</button>
+    </div>
+    <div id="sdWarn"></div>
 
     <div class="sdf">
       <label for="sdPurpose">Purpose</label>
@@ -293,7 +322,27 @@
       <div class="sk"><span id="sdFmtName">hex</span><span id="sdStamp"></span></div>
       <div class="sdval" id="sdVal"></div>
       <div class="tabs" id="sdTabs"></div>
+
+      <div class="stage" style="margin-top:13px">split for backup <b>· Shamir over GF(2⁸)</b></div>
+      <div class="hint">Losing a key is far more common than having one stolen. Split it into <b>n</b> pieces of which any <b>k</b> rebuild it &mdash; store them apart. Any k&minus;1 pieces reveal <em>nothing</em>: every possible key stays equally likely.</div>
+      <div class="sdf">
+        <label for="ssK">Need</label>
+        <select id="ssK" class="sdsel"><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+        <label for="ssN">of</label>
+        <select id="ssN" class="sdsel"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option></select>
+        <button id="ssGo" class="cbtn" type="button">✂ Split</button>
+      </div>
+      <div id="ssOut"></div>
     </div>
+
+    <div class="stage">rebuild from shares</div>
+    <textarea id="ssIn" class="sdta" autocomplete="off" spellcheck="false"
+      placeholder="Paste k shares, one per line (SSS1-3of5-...). Nothing is sent anywhere."></textarea>
+    <div class="ctl">
+      <button id="ssRe" class="cbtn" type="button">↺ Rebuild key</button>
+      <button id="ssClr" class="cbtn danger" type="button">⌫ Clear shares</button>
+    </div>
+    <div id="ssRes"></div>
 
     <div class="danger-note">
       <b>Before you use this for anything that matters.</b> A browser tab is not a safe place to make
@@ -1532,15 +1581,16 @@
       acc+=Math.exp(lnf-lgamma(c+1)-lgamma(n-c+1)+c*lp+(n-c)*lq);
       if(acc>alpha)return Math.min(W,c+1);}
     return 1;}
-  function mcvH(hist,n){
-    if(n<128)return null;
+  function mcvH(hist,n,minN){
+    if(n<(minN||128))return null;
     var mx=0,i;for(i=0;i<256;i++)if(hist[i]>mx)mx=hist[i];
     var p=mx/n,pu=Math.min(1,p+2.576*Math.sqrt(p*(1-p)/(n-1)));
     return Math.max(0,-Math.log(pu)/Math.LN2);}
 
   // ---------- entropy layers ----------
   var EAPT_W=512,EFOLD=4096,EASSESS=1024;
-  function EP(id,label,cls,desc){return {id:id,label:label,cls:cls,desc:desc,
+  function EP(id,label,cls,desc,declaredH,assessN){return {id:id,label:label,cls:cls,desc:desc,
+    declaredH:declaredH||null,assessN:assessN||null,
     on:(cls!=='optin'),locked:(cls==='floor'),buf:[],n:0,hist:new Uint32Array(256),
     rctPrev:-1,rctRun:0,rctMax:0,rctFail:false,rctC:0,
     aptFirst:-1,aptI:0,aptCount:0,aptFail:false,aptC:0,H:null,H0:null,_lh:0};}
@@ -1549,7 +1599,11 @@
     EP('jitter','TIMING.JITTER','local','CPU scheduling and clock noise measured on this device. Browsers clamp their timers, so expect modest entropy per sample.'),
     EP('pointer','POINTER.CHAOS','local','Your own mouse or finger movement on the pad below — coordinates plus sub-millisecond timing.'),
     EP('motion','DEVICE.MOTION','optin','Accelerometer and gyroscope noise. Needs permission. Enable it in the swarm panel above.'),
-    EP('mic','AMBIENT.AUDIO','optin','Low bits of the microphone noise floor. Needs permission. Never recorded, never played back, never sent — samples are hashed and dropped.'),
+    EP('mic','AMBIENT.AUDIO','optin','Low bits of the microphone noise floor. Needs permission. Never recorded, never played back, never sent — samples are hashed and dropped. <b>Best trick:</b> tune a radio <em>between</em> stations and point the mic at the hiss. A station\'s content is public and worth nothing; the static is local thermal noise nobody can reproduce.'),
+    EP('cam','SENSOR.SHOT.NOISE','optin','Low bits of camera frames. Photon shot noise and sensor dark current are real physics at a high rate — the strongest source here. Needs permission. Frames are hashed and dropped, never stored, never shown, never sent. Works with the lens covered.'),
+    EP('radio','RADIO.STATIC','optin','Spectrum of a radio tuned <b>between</b> stations, via line-in or mic. Broadband thermal and atmospheric noise at your antenna, at your location, at that microsecond \u2014 an attacker would need a receiver where you are. Sampled as the low bits of every FFT bin, so one input yields hundreds of independent channels. Carrier detection warns you if you are on a station: <em>a station\'s content is public and worth nothing.</em>'),
+    EP('dice','PHYSICAL.DICE','local','Real dice you roll and type below. The one source an attacker genuinely cannot observe, at 2.585 bits per d6 roll. Slow, and worth it.',
+       Math.log(6)/Math.LN2, 64),
     EP('manual','YOUR.SECRET','local','Dice rolls or characters you type below, plus your keystroke timing. Only you know these — the one source nobody else could reconstruct.'),
     EP('swarm','PUBLIC.SWARM','public','The live arms: drand, Wikipedia, Bluesky, Mastodon, Coinbase. Unpredictable in advance but PUBLIC — counted as zero secret bits.')
   ];
@@ -1572,8 +1626,10 @@
         if(P.aptI>=EAPT_W){P.aptI=0;P.aptCount=0;}}
     }
     if(P.on)SRAIN.heat=Math.min(1.6,SRAIN.heat+bytes.length*0.006);   // rain reacts to real arrivals
-    if(P.n-P._lh>=256){P._lh=P.n;
-      var h=mcvH(P.hist,P.n);
+    // a slow, hand-fed source cannot wait 256 samples between reassessments
+    var need=P.assessN||EASSESS, step=Math.min(256,Math.max(16,Math.floor(need/4)));
+    if(P.n-P._lh>=step){P._lh=P.n;
+      var h=mcvH(P.hist,P.n,Math.min(128,need));
       if(h!=null){
         P.H=h;                                        // live estimate, shown to the user
         /* 800-90B assesses min-entropy ONCE, then holds the health-test cutoffs
@@ -1584,7 +1640,9 @@
         if(P.H0==null){
           var hp=Math.max(h,0.05);
           P.rctC=1+Math.ceil(20/hp);P.aptC=aptCutoff(EAPT_W,hp);
-          if(P.n>=EASSESS)P.H0=h;                     // frozen from here on
+          if(P.n>=(P.assessN||EASSESS))
+            // a declared distribution caps the claim; the data can only lower it
+            P.H0=P.declaredH!=null?Math.min(h,P.declaredH):h;
         }
       }}
   }
@@ -1607,12 +1665,91 @@
     var c=new Uint8Array(48);crypto.getRandomValues(c);epush('csprng',c);c.fill(0);
     epush('jitter',jitterBytes(8));                   // ~43 s to assess the floor, ~4 min for jitter
   }
-  var PAD={pts:[],last:0};
+  var PAD={pts:[],last:0},DICEN=0;
   function padPoint(x,y,p){
     var t=performance.now(),m=Math.round(t*1000);
     epush('pointer',[x&255,(x>>8)&255,y&255,(y>>8)&255,m&255,(m>>8)&255,(m>>16)&255,Math.round((p||0)*255)&255]);
     PAD.pts.push([x,y,t]);if(PAD.pts.length>140)PAD.pts.shift();
   }
+  /* ---------- radio spectrum ----------
+     The entropy is in the noise floor, never the programme. Only the low bits of
+     each FFT bin are taken, which discards the slow envelope (AGC pumping, mains
+     hum) and keeps the bin-to-bin jitter. Spectral flatness -- geometric over
+     arithmetic mean of the power spectrum -- is ~1 for white noise and collapses
+     toward 0 for anything tonal, so a carrier is detectable and is called out. */
+  var RAD={flat:null,peak:0};
+  function radOn(P){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){logLine('radio.entropy :: UNSUPPORTED','a');P.on=false;buildLayers();return;}
+    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,
+      autoGainControl:false,channelCount:1,sampleRate:48000}})
+    .then(function(stream){
+      RAD.stream=stream;
+      var AC=window.AudioContext||window.webkitAudioContext;
+      RAD.ctx=new AC();RAD.src=RAD.ctx.createMediaStreamSource(stream);
+      RAD.an=RAD.ctx.createAnalyser();RAD.an.fftSize=2048;RAD.an.smoothingTimeConstant=0;
+      RAD.src.connect(RAD.an);
+      RAD.f=new Float32Array(RAD.an.frequencyBinCount);
+      RAD.dv=new DataView(new ArrayBuffer(4));
+      RAD.iv=setInterval(function(){
+        if(!RAD.an)return;
+        RAD.an.getFloatFrequencyData(RAD.f);            // dBFS per bin
+        var nb=RAD.f.length,i,v,lin,logsum=0,linsum=0,used=0,mx=-Infinity,o=[];
+        for(i=0;i<nb;i++){
+          v=RAD.f[i];
+          if(!isFinite(v)||v<=-190)continue;            // silent/empty bins
+          lin=Math.pow(10,v/10);
+          logsum+=Math.log(lin+1e-30);linsum+=lin;used++;
+          if(v>mx)mx=v;
+          RAD.dv.setFloat32(0,v);
+          o.push(RAD.dv.getUint8(3));                   // low mantissa byte of the bin
+        }
+        if(used>32){
+          var gm=Math.exp(logsum/used),am=linsum/used;
+          RAD.flat=am>0?gm/am:0;                        // 1 = white, ->0 = tonal
+          RAD.peak=mx;
+          // Only claim entropy when the spectrum actually looks like noise.
+          if(RAD.flat>0.25)epush('radio',o);
+        }
+      },200);
+      logLine('radio.entropy :: LISTENING \u00b7 SPECTRUM \u00b7 TUNE BETWEEN STATIONS');
+    }).catch(function(){logLine('radio.entropy :: DENIED','a');P.on=false;buildLayers();});
+  }
+  function radOff(){
+    if(RAD.iv)clearInterval(RAD.iv);
+    if(RAD.stream)RAD.stream.getTracks().forEach(function(t){t.stop();});
+    if(RAD.ctx&&RAD.ctx.close)try{RAD.ctx.close();}catch(e){}
+    RAD={flat:null,peak:0};logLine('radio.entropy :: STOPPED');}
+
+  var CAM={};
+  function camOn(P){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){logLine('camera.entropy :: UNSUPPORTED','a');P.on=false;buildLayers();return;}
+    navigator.mediaDevices.getUserMedia({video:{width:320,height:240},audio:false})
+    .then(function(stream){
+      CAM.stream=stream;
+      var v=document.createElement('video');
+      v.srcObject=stream;v.muted=true;v.playsInline=true;
+      CAM.v=v;CAM.cv=document.createElement('canvas');CAM.cv.width=160;CAM.cv.height=120;
+      CAM.cx=CAM.cv.getContext('2d',{willReadFrequently:true});
+      v.play().then(function(){
+        CAM.iv=setInterval(function(){
+          if(!CAM.cx||!CAM.v||CAM.v.readyState<2)return;
+          CAM.cx.drawImage(CAM.v,0,0,160,120);
+          var d=CAM.cx.getImageData(0,0,160,120).data,o=[],i;
+          // least-significant bits only: shot noise, never the image
+          for(i=0;i<d.length;i+=64){
+            o.push(((d[i]&3)<<6)|((d[i+1]&3)<<4)|((d[i+2]&3)<<2)|(d[i+4]&3));
+          }
+          epush('cam',o);
+        },200);
+        logLine('camera.entropy :: SAMPLING SHOT NOISE \u00b7 LSB ONLY');
+      }).catch(function(){logLine('camera.entropy :: PLAYBACK FAILED','a');P.on=false;buildLayers();});
+    }).catch(function(){logLine('camera.entropy :: DENIED','a');P.on=false;buildLayers();});
+  }
+  function camOff(){
+    if(CAM.iv)clearInterval(CAM.iv);
+    if(CAM.stream)CAM.stream.getTracks().forEach(function(t){t.stop();});
+    CAM={};logLine('camera.entropy :: STOPPED');}
+
   var MIC={};
   function micOn(P){
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){logLine('audio.entropy :: UNSUPPORTED','a');P.on=false;buildLayers();return;}
@@ -1637,6 +1774,70 @@
     if(MIC.stream)MIC.stream.getTracks().forEach(function(t){t.stop();});
     if(MIC.ctx&&MIC.ctx.close)try{MIC.ctx.close();}catch(e){}
     MIC={};logLine('audio.entropy :: STOPPED');}
+
+  /* ---------- Shamir secret sharing over GF(2^8) ----------
+     Key generation is not the hard part; backup is. Split the seed into n
+     shares of which any k rebuild it, and any k-1 reveal NOTHING -- not less,
+     nothing: every secret stays equally likely. */
+  var GEXP=new Uint8Array(512),GLOG=new Uint8Array(256);
+  (function(){var x=1,i;
+    for(i=0;i<255;i++){GEXP[i]=x;GLOG[x]=i;x^=(x<<1)^((x&0x80)?0x11b:0);x&=0xff;}
+    for(i=255;i<512;i++)GEXP[i]=GEXP[i-255];})();
+  function gmul(a,b){return (a===0||b===0)?0:GEXP[GLOG[a]+GLOG[b]];}
+  function gdiv(a,b){if(b===0)throw new Error('GF division by zero');return a===0?0:GEXP[GLOG[a]+255-GLOG[b]];}
+  function sssSplit(secret,n,k){
+    if(!(k>=2&&k<=n&&n<=255))throw new RangeError('need 2 <= k <= n <= 255');
+    var len=secret.length,coef=new Uint8Array((k-1)*len);
+    crypto.getRandomValues(coef);
+    var out=[],sx,i,d,acc,xp,y;
+    for(sx=1;sx<=n;sx++){
+      y=new Uint8Array(len);
+      for(i=0;i<len;i++){acc=secret[i];xp=1;
+        for(d=1;d<k;d++){xp=gmul(xp,sx);acc^=gmul(coef[(d-1)*len+i],xp);}
+        y[i]=acc;}
+      out.push({x:sx,y:y});}
+    coef.fill(0);
+    return out;}
+  function sssCombine(shares){
+    if(!shares||shares.length<2)throw new RangeError('need at least 2 shares');
+    var len=shares[0].y.length,xs=shares.map(function(s){return s.x;}),i,j,m;
+    for(i=0;i<xs.length;i++){
+      if(xs[i]<1||xs[i]>255)throw new Error('share index out of range');
+      for(j=i+1;j<xs.length;j++)if(xs[i]===xs[j])throw new Error('the same share was entered twice');}
+    for(i=0;i<shares.length;i++)if(shares[i].y.length!==len)throw new Error('shares are from different secrets (different lengths)');
+    var out=new Uint8Array(len),acc,num,den;
+    for(i=0;i<len;i++){acc=0;
+      for(j=0;j<shares.length;j++){num=1;den=1;
+        for(m=0;m<shares.length;m++){if(m===j)continue;
+          num=gmul(num,xs[m]);den=gmul(den,xs[j]^xs[m]);}
+        acc^=gmul(shares[j].y[i],gdiv(num,den));}
+      out[i]=acc;}
+    return out;}
+  function sssCk(body){var c=0x1234,i;
+    for(i=0;i<body.length;i++)c=((c*31+body.charCodeAt(i))>>>0)&0xffff;
+    return c.toString(16).padStart(4,'0');}
+  function sssEncode(sh,k,n){
+    var body=sh.x.toString(16).padStart(2,'0')+toHex(sh.y);
+    return 'SSS1-'+k+'of'+n+'-'+body+'-'+sssCk(body);}
+  function sssDecode(str){
+    var m=String(str).trim().match(/^SSS1-(\d+)of(\d+)-([0-9a-fA-F]+)-([0-9a-fA-F]{4})$/);
+    if(!m)throw new Error('not a share: expected SSS1-KofN-<hex>-<checksum>');
+    if(sssCk(m[3])!==m[4].toLowerCase())throw new Error('checksum mismatch \u2014 this share was mistyped');
+    if(m[3].length<4||m[3].length%2)throw new Error('share payload malformed');
+    var b=new Uint8Array(m[3].length>>1),i;
+    for(i=0;i<b.length;i++)b[i]=parseInt(m[3].substr(i*2,2),16);
+    return {x:b[0],y:b.slice(1),k:+m[1],n:+m[2]};}
+
+  /* ---------- pool health ----------
+     A source that fails its health tests cannot make the seed WORSE -- the
+     CSPRNG floor holds regardless -- so blocking generation would be theatre.
+     It is refused its bit claim and said out loud instead. */
+  function poolHealth(){
+    var bad=[];
+    EPOOL.forEach(function(P){
+      if(!P.on||P.cls==='public'||!P.n)return;
+      if(P.rctFail||P.aptFail)bad.push(P.label+(P.rctFail?' (repetition)':'')+(P.aptFail?' (proportion)':''));});
+    return bad;}
 
   // ---------- extraction ----------
   var SEED=null,SFMT='hex';
@@ -1694,6 +1895,8 @@
       if(!P.locked)document.getElementById('ck_'+P.id).addEventListener('change',function(e){
         P.on=e.target.checked;
         if(P.id==='mic'){P.on?micOn(P):micOff();}
+        if(P.id==='cam'){P.on?camOn(P):camOff();}
+        if(P.id==='radio'){P.on?radOn(P):radOff();}
         if(P.id==='motion'&&P.on&&!byId.motion._on)enableMotion();
         renderSeed();});
     });
@@ -1703,6 +1906,11 @@
       var row=document.getElementById('ly_'+P.id),el=document.getElementById('lh_'+P.id);
       if(!row||!el)return;
       row.className='lyr'+(P.on?'':' off');
+      if(P.id==='radio'&&RAD.flat!=null){
+        var lab=RAD.flat>0.55?'noise \u2014 good':(RAD.flat>0.25?'partly tonal \u2014 detune further':'CARRIER \u2014 that is a station, its content is public');
+        el.textContent='spectral flatness '+RAD.flat.toFixed(3)+' \u00b7 '+lab+
+          (P.n?(' \u00b7 n '+P.n.toLocaleString()+' \u00b7 H '+(P.H==null?'\u2014':P.H.toFixed(2))+' b/B'):' \u00b7 not counting');
+        el.className='lh'+(RAD.flat>0.55?'':' bad');return;}
       if(!P.n){el.textContent='no samples yet';el.className='lh';return;}
       var bad=P.rctFail||P.aptFail;
       el.textContent='n '+P.n.toLocaleString()+
@@ -1718,6 +1926,19 @@
     var m=document.getElementById('sdMeter'),mw=document.getElementById('sdMeterWrap');
     m.style.width=pct+'%';mw.className='meter'+(pct>=100?' full':'');
     var live=0;EPOOL.forEach(function(P){if(P.on&&P.cls!=='public'&&ebits(P)>0)live++;});
+    var wb=document.getElementById('sdWarn'),bad=poolHealth();
+    if(wb)wb.innerHTML=bad.length
+      ? '<div class="warnbox"><b>Health test failed:</b> '+bad.join(', ')+
+        '. That source is no longer counted toward the total. Your seed is not weakened \u2014 the CSPRNG floor holds regardless \u2014 but something you enabled has stopped delivering.</div>'
+      : '';
+    var ns=document.getElementById('netState');
+    if(ns){var on=(typeof navigator!=='undefined'&&navigator.onLine!==false);
+      ns.className='net '+(on?'on':'off');
+      ns.lastChild.textContent=on?'online':'offline \u00b7 air-gapped';
+      var sm=document.getElementById('sdMeta');
+      if(sm)sm.textContent=on
+        ? 'local only \u00b7 never transmitted \u00b7 for a key that matters: save this page, disconnect, then generate'
+        : 'local only \u00b7 never transmitted \u00b7 air-gapped \u2014 nothing can leave this machine';}
     document.getElementById('sdBits').textContent=
       'Seed strength: '+need+'-bit, guaranteed by the CSPRNG floor on its own. '+
       'Corroborating entropy independently assessed so far ≈ '+Math.round(have).toLocaleString()+
@@ -1773,6 +1994,11 @@
       P.rctPrev=-1;P.rctRun=0;P.rctMax=0;P.rctFail=false;P.rctC=0;
       P.aptFirst=-1;P.aptI=0;P.aptCount=0;P.aptFail=false;P.aptC=0;});
     var ta=document.getElementById('sdta');if(ta)ta.value='';
+    ['ssIn'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+    ['ssOut','ssRes','sdWarn'].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML='';});
+    DICEN=0;
+    var dh=document.getElementById('diceHint');
+    if(dh)dh.textContent='Roll a real d6 and press the face you rolled. Slow, and the only source an attacker genuinely cannot observe.';
     PAD.pts.length=0;
     document.getElementById('sdOutBox').hidden=true;
     document.getElementById('sdVal').textContent='';
@@ -2034,6 +2260,8 @@
     ['chKey','chMsg','chBlob'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     EPOOL.forEach(function(P){for(var i=0;i<P.buf.length;i++)P.buf[i]=0;P.buf.length=0;});
     if(MIC.stream)micOff();
+    if(CAM.stream)camOff();
+    if(RAD.stream)radOff();
   });
 
   // ---- seed extractor ----
@@ -2051,6 +2279,63 @@
     ta.value='';                                        // never restore across reloads
     ta.addEventListener('input',function(){var m=Math.round(performance.now()*1000);
       epush('manual',[m&255,(m>>8)&255,(m>>16)&255]);}); // keystroke timing, not content
+    // physical dice: push only the face value, so the measured min-entropy is
+    // exactly log2(6) = 2.585 bits per roll and the accounting cannot flatter itself
+    Array.prototype.forEach.call(document.querySelectorAll('.die'),function(b){
+      b.addEventListener('click',function(){
+        epush('dice',[b.getAttribute('data-d')|0]);
+        DICEN++;
+        var h=document.getElementById('diceHint');
+        h.textContent=DICEN+' roll'+(DICEN===1?'':'s')+' \u00b7 \u2248'+(DICEN*2.585).toFixed(0)+
+          ' bits of entropy only you have seen. Keep going, or stop \u2014 the CSPRNG floor covers you either way.';
+      });
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key>='1'&&e.key<='6'&&document.activeElement&&document.activeElement.classList&&
+         document.activeElement.classList.contains('die')){
+        var b=document.querySelector('.die[data-d="'+e.key+'"]');if(b)b.click();}
+    });
+    window.addEventListener('online',renderSeed);
+    window.addEventListener('offline',renderSeed);
+
+    // ---- Shamir ----
+    document.getElementById('ssGo').addEventListener('click',function(){
+      var out=document.getElementById('ssOut');
+      if(!SEED){out.innerHTML='<div class="warnbox">Generate a seed first.</div>';return;}
+      var k=+document.getElementById('ssK').value,n=+document.getElementById('ssN').value;
+      if(k>n){out.innerHTML='<div class="warnbox">You cannot need more shares than you make.</div>';return;}
+      try{
+        var sh=sssSplit(SEED,n,k),h='',i;
+        for(i=0;i<sh.length;i++)
+          h+='<div class="share"><b>share '+(i+1)+' of '+n+'</b> \u00b7 any '+k+' rebuild the key<br>'+
+             sssEncode(sh[i],k,n)+'</div>';
+        out.innerHTML='<div class="hint" style="margin-top:8px">Store these in <b>'+n+' different places</b>. Any '+k+
+          ' rebuild the key; any '+(k-1)+' reveal nothing at all. Written down by hand is fine \u2014 the checksum catches a slip.</div>'+h;
+        logLine('shamir :: SPLIT '+k+'-of-'+n+' \u00b7 NOT STORED');
+      }catch(err){out.innerHTML='<div class="warnbox">'+err.message+'</div>';}
+    });
+    document.getElementById('ssRe').addEventListener('click',function(){
+      var res=document.getElementById('ssRes');
+      var lines=(document.getElementById('ssIn').value||'').split(/[\r\n]+/).map(function(t){return t.trim();}).filter(Boolean);
+      if(lines.length<2){res.innerHTML='<div class="warnbox">Paste at least two shares, one per line.</div>';return;}
+      try{
+        var parts=lines.map(sssDecode),need=parts[0].k;
+        if(parts.length<need){
+          res.innerHTML='<div class="warnbox">These shares need '+need+' to rebuild and you gave '+parts.length+'.</div>';return;}
+        var rec=sssCombine(parts);
+        res.innerHTML='<div class="sdout"><div class="sk"><span>rebuilt key \u00b7 '+(rec.length*8)+'-bit</span></div>'+
+          '<div class="sdval">'+toHex(rec)+'</div></div>';
+        logLine('shamir :: REBUILT FROM '+parts.length+' SHARES');
+      }catch(err){res.innerHTML='<div class="warnbox">'+err.message+'</div>';}
+    });
+    document.getElementById('ssClr').addEventListener('click',function(){
+      document.getElementById('ssIn').value='';
+      document.getElementById('ssRes').innerHTML='';
+      document.getElementById('ssOut').innerHTML='';
+      logLine('shamir :: SHARES CLEARED');
+    });
+    ['ssIn'].forEach(function(id){document.getElementById(id).value='';});
+
     document.getElementById('sdGen').addEventListener('click',genSeed);
     document.getElementById('sdCopy').addEventListener('click',copySeed);
     document.getElementById('sdClear').addEventListener('click',wipeSeed);
