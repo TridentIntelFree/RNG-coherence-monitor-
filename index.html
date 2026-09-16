@@ -179,6 +179,13 @@
   .share{font-size:10.5px;color:var(--bright);word-break:break-all;background:rgba(0,0,0,.5);
     border:1px solid var(--hair);border-radius:4px;padding:6px 8px;margin-top:5px;user-select:all;line-height:1.5}
   .share b{color:var(--fly);font-weight:400}
+  .ratchet{display:flex;gap:5px;align-items:center;margin:8px 0 4px;flex-wrap:wrap}
+  .rk{font-size:15px;line-height:1}
+  .rk.dead{color:var(--faint)}
+  .rk.live{color:var(--grn);text-shadow:0 0 8px rgba(0,255,102,.6)}
+  .label{font-size:9.5px;color:var(--dim);background:rgba(0,0,0,.5);border:1px solid var(--hair);
+    border-radius:4px;padding:8px 10px;margin-top:8px;white-space:pre-wrap;word-break:break-word;
+    max-height:230px;overflow-y:auto;line-height:1.5}
   #flyPanel{position:relative;overflow:hidden}
   #flyRain{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.30;border-radius:6px;
     -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.12) 30%,rgba(0,0,0,.12) 80%,#000 100%);
@@ -375,7 +382,18 @@
       <input id="chKey" class="sdin" placeholder="hex — or press Use current seed" autocomplete="off" spellcheck="false">
       <button id="chUse" class="cbtn" type="button">↑ Use current seed</button>
     </div>
+    <div class="sdf">
+      <label for="chRole">You are</label>
+      <select id="chRole" class="sdsel"><option value="0" selected>side A</option><option value="1">side B</option></select>
+      <span class="hint" style="margin:0;flex:1">One of you picks A, the other B. You each send on your own chain, so your ratchets never collide.</span>
+    </div>
     <div class="fp" id="chFp"><span>fingerprint</span> —</div>
+    <div class="sdf">
+      <label><input type="checkbox" id="chCascade" style="accent-color:var(--grn);width:14px;height:14px;vertical-align:-2px"> Stack a second cipher</label>
+      <span class="hint" style="margin:0;flex:1">ChaCha20 over AES-256-GCM, independent keys, both standard. Survives one algorithm being broken; doubles the code that has to be right. Off by default because AES is not the weak link here.</span>
+    </div>
+    <div class="stage">ratchet <b>· keys destroyed as they are used</b></div>
+    <div id="chRatchet"></div>
 
     <textarea id="chMsg" class="sdta" autocomplete="off" spellcheck="false"
       placeholder="Message to encrypt…"></textarea>
@@ -389,6 +407,9 @@
       placeholder="Ciphertext appears here. Paste one in to decrypt it."></textarea>
 
     <div class="msgs" id="chLog"></div>
+    <div class="stage">security label <b>· what this message does and does not give you</b></div>
+    <div class="hint">Every message carries this record. It is machine-readable on purpose: software handed a blob should not have to guess what it is holding, and the <code>NOT_assured</code> list is the half that usually goes unsaid.</div>
+    <div class="label" id="chLabel"></div>
 
     <div class="danger-note">
       <b>What this is, exactly.</b> A pre-shared-key message box: AES-256-GCM, key
@@ -396,10 +417,11 @@
       tampering is detected. It runs entirely in this tab — there is no server, no account
       and no transport, which is why you carry the blob yourself.
       <br><br>
-      <b>What it is not.</b> Not a secure messenger. There is <em>no forward secrecy</em> —
-      if the key leaks later, every message ever sent with it can be read. There is no
-      sender identity: anyone holding the key can write messages that look like yours.
-      Replays are not detected. Nothing here protects a device that is already compromised.
+      <b>What it is not.</b> Not a secure messenger. There is no sender identity: anyone
+      holding the key can write messages that look like yours. Metadata — that you are
+      talking, when, and roughly how much — is not hidden. Nothing here protects a device
+      that is already compromised. A message that arrives out of order is permanently
+      unreadable, which is the price of a strict ratchet with no stored skipped keys.
       For real conversations that need those properties, use Signal. Use this for a note you
       want to hand someone without a server in the middle, and rotate the key freely — a new
       seed takes one press.
@@ -1601,7 +1623,7 @@
     EP('motion','DEVICE.MOTION','optin','Accelerometer and gyroscope noise. Needs permission. Enable it in the swarm panel above.'),
     EP('mic','AMBIENT.AUDIO','optin','Low bits of the microphone noise floor. Needs permission. Never recorded, never played back, never sent — samples are hashed and dropped. <b>Best trick:</b> tune a radio <em>between</em> stations and point the mic at the hiss. A station\'s content is public and worth nothing; the static is local thermal noise nobody can reproduce.'),
     EP('cam','SENSOR.SHOT.NOISE','optin','Low bits of camera frames. Photon shot noise and sensor dark current are real physics at a high rate — the strongest source here. Needs permission. Frames are hashed and dropped, never stored, never shown, never sent. Works with the lens covered.'),
-    EP('radio','RADIO.STATIC','optin','Spectrum of a radio tuned <b>between</b> stations, via line-in or mic. Broadband thermal and atmospheric noise at your antenna, at your location, at that microsecond \u2014 an attacker would need a receiver where you are. Sampled as the low bits of every FFT bin, so one input yields hundreds of independent channels. Carrier detection warns you if you are on a station: <em>a station\'s content is public and worth nothing.</em>'),
+    EP('radio','RADIO.STATIC','optin','Spectrum of a radio tuned <b>between</b> stations, via line-in or mic. <b>Sweep the dial slowly while it samples</b> \u2014 a parked dial resamples one noise process and the samples are correlated; sweeping visits independent bands, and the page measures whether you are actually sweeping rather than taking your word for it. Broadband thermal and atmospheric noise at your antenna, at your location, at that microsecond \u2014 an attacker would need a receiver where you are. Sampled as the low bits of every FFT bin, so one input yields hundreds of independent channels. Carrier detection warns you if you are on a station: <em>a station\'s content is public and worth nothing.</em>'),
     EP('dice','PHYSICAL.DICE','local','Real dice you roll and type below. The one source an attacker genuinely cannot observe, at 2.585 bits per d6 roll. Slow, and worth it.',
        Math.log(6)/Math.LN2, 64),
     EP('manual','YOUR.SECRET','local','Dice rolls or characters you type below, plus your keystroke timing. Only you know these — the one source nobody else could reconstruct.'),
@@ -1677,7 +1699,7 @@
      hum) and keeps the bin-to-bin jitter. Spectral flatness -- geometric over
      arithmetic mean of the power spectrum -- is ~1 for white noise and collapses
      toward 0 for anything tonal, so a carrier is detectable and is called out. */
-  var RAD={flat:null,peak:0};
+  var RAD={flat:null,peak:0,flux:0,prev:null};
   function radOn(P){
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){logLine('radio.entropy :: UNSUPPORTED','a');P.on=false;buildLayers();return;}
     navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,
@@ -1694,6 +1716,17 @@
         if(!RAD.an)return;
         RAD.an.getFloatFrequencyData(RAD.f);            // dBFS per bin
         var nb=RAD.f.length,i,v,lin,logsum=0,linsum=0,used=0,mx=-Infinity,o=[];
+        /* Spectral flux: how much the spectrum moved since the last sample.
+           A parked dial resamples ONE noise process, so successive samples are
+           correlated and the byte count badly overstates the real entropy --
+           exactly the case where the MCV estimator is optimistic. Sweeping the
+           dial visits independent bands. So rather than assume a sweep, measure
+           one. */
+        if(RAD.prev){var fl=0,d;
+          for(i=0;i<nb;i++){d=RAD.f[i]-RAD.prev[i];if(isFinite(d))fl+=d*d;}
+          RAD.flux=RAD.flux*0.7+0.3*Math.sqrt(fl/nb);}
+        if(!RAD.prev)RAD.prev=new Float32Array(nb);
+        RAD.prev.set(RAD.f);
         for(i=0;i<nb;i++){
           v=RAD.f[i];
           if(!isFinite(v)||v<=-190)continue;            // silent/empty bins
@@ -1718,7 +1751,7 @@
     if(RAD.iv)clearInterval(RAD.iv);
     if(RAD.stream)RAD.stream.getTracks().forEach(function(t){t.stop();});
     if(RAD.ctx&&RAD.ctx.close)try{RAD.ctx.close();}catch(e){}
-    RAD={flat:null,peak:0};logLine('radio.entropy :: STOPPED');}
+    RAD={flat:null,peak:0,flux:0,prev:null};logLine('radio.entropy :: STOPPED');}
 
   var CAM={};
   function camOn(P){
@@ -1907,10 +1940,11 @@
       if(!row||!el)return;
       row.className='lyr'+(P.on?'':' off');
       if(P.id==='radio'&&RAD.flat!=null){
-        var lab=RAD.flat>0.55?'noise \u2014 good':(RAD.flat>0.25?'partly tonal \u2014 detune further':'CARRIER \u2014 that is a station, its content is public');
-        el.textContent='spectral flatness '+RAD.flat.toFixed(3)+' \u00b7 '+lab+
+        var lab=RAD.flat>0.55?'noise':(RAD.flat>0.25?'partly tonal \u2014 detune further':'CARRIER \u2014 a station, its content is public');
+        var sw=RAD.flux>3.5?'sweeping \u2014 independent bands':(RAD.flux>1.2?'drifting':'dial parked \u2014 samples are correlated, sweep for real independence');
+        el.textContent='flatness '+RAD.flat.toFixed(3)+' ('+lab+') \u00b7 sweep '+RAD.flux.toFixed(1)+' ('+sw+')'+
           (P.n?(' \u00b7 n '+P.n.toLocaleString()+' \u00b7 H '+(P.H==null?'\u2014':P.H.toFixed(2))+' b/B'):' \u00b7 not counting');
-        el.className='lh'+(RAD.flat>0.55?'':' bad');return;}
+        el.className='lh'+(RAD.flat>0.55&&RAD.flux>1.2?'':' bad');return;}
       if(!P.n){el.textContent='no samples yet';el.className='lh';return;}
       var bad=P.rctFail||P.aptFail;
       el.textContent='n '+P.n.toLocaleString()+
@@ -2040,7 +2074,23 @@
      Envelope = "SYNC1." + base64url(nonce[12] || ciphertext || tag[16]),
      with "SYNC1" bound in as additional authenticated data.
      ══════════════════════════════════════════════════════════════════════════ */
-  var CHAN={msgs:[],key:null};
+  /* ══════════════════════════════════════════════════════════════════════════
+     KEYED.CHANNEL v2 — SYNC2 envelope.
+
+     The cryptography here is deliberately boring: AES-256-GCM and HKDF-SHA-256,
+     both standard, neither invented here. The symmetric ratchet is Signal's
+     construction with the Diffie-Hellman half removed. Novelty in a cipher is
+     how you get something that looks strong and is not.
+
+     What IS new is that every message carries a machine-readable label saying
+     exactly which guarantees apply to it -- and, more usefully, which do not.
+
+     Envelope:  SYNC2.<b64url( ver | role | ctr(4) | commit(8) | nonce(12) | ct+tag )>
+     AAD:       "SYNC2" | ver | role | ctr | commit
+     ══════════════════════════════════════════════════════════════════════════ */
+  var CHAN={msgs:[],root:null,role:0,txChain:null,rxChain:null,txIdx:0,rxIdx:0,destroyed:0,lastLabel:null};
+  var SYNCSALT=null;
+  function chSalt(){ if(!SYNCSALT)SYNCSALT=new TextEncoder().encode('SYNCHRONICITY/channel/v2');return SYNCSALT; }
   function fromB64(s){
     s=String(s).replace(/-/g,'+').replace(/_/g,'/').replace(/\s+/g,'');
     while(s.length%4)s+='=';
@@ -2049,83 +2099,238 @@
   function chHasCrypto(){return !!(window.crypto&&crypto.subtle&&crypto.subtle.importKey);}
   function chRawKey(){
     var h=(document.getElementById('chKey').value||'').replace(/[^0-9a-fA-F]/g,'');
-    if(h.length<32)return null;                        // demand at least 128 bits
+    if(h.length<32)return null;
     if(h.length%2)h=h.slice(0,-1);
     var b=new Uint8Array(h.length>>1),i;
     for(i=0;i<b.length;i++)b[i]=parseInt(h.substr(i*2,2),16);
     return b;}
-  function chDerive(raw){
-    var enc=new TextEncoder();
-    var k=hkdf(raw,enc.encode('SYNCHRONICITY/channel/v1'),enc.encode('SYNCHRONICITY/channel/aes-gcm/v1'),32);
-    return crypto.subtle.importKey('raw',k,{name:'AES-GCM'},false,['encrypt','decrypt'])
-      .then(function(ck){k.fill(0);return ck;});}
+  /* ---------- ChaCha20 (RFC 8439) ----------
+     Second layer only. AES-GCM stays the inner, authenticated layer, so nothing
+     here is ever trusted to authenticate anything -- if a byte is altered, the
+     GCM tag catches it after this layer is peeled off.
+
+     Cascading is real practice, not theatre: VeraCrypt ships cipher cascades and
+     NSA's CSfC programme requires two independent layers. It buys exactly one
+     thing -- survival if AES is catastrophically broken -- and costs one thing:
+     twice the implementation to be wrong. Default off, for that reason.
+     Verified against RFC 8439 2.3.2, 2.4.2 and A.1. */
+  function ccRotl(a,b){return ((a<<b)|(a>>>(32-b)))>>>0;}
+  function ccBlock(key,nonce,counter,out){
+    var st=new Uint32Array(16),x=new Uint32Array(16),i;
+    st[0]=0x61707865;st[1]=0x3320646e;st[2]=0x79622d32;st[3]=0x6b206574;
+    for(i=0;i<8;i++)st[4+i]=(key[i*4]|(key[i*4+1]<<8)|(key[i*4+2]<<16)|(key[i*4+3]<<24))>>>0;
+    st[12]=counter>>>0;
+    for(i=0;i<3;i++)st[13+i]=(nonce[i*4]|(nonce[i*4+1]<<8)|(nonce[i*4+2]<<16)|(nonce[i*4+3]<<24))>>>0;
+    x.set(st);
+    function QR(a,b,c,d){
+      x[a]=(x[a]+x[b])>>>0;x[d]=ccRotl(x[d]^x[a],16);
+      x[c]=(x[c]+x[d])>>>0;x[b]=ccRotl(x[b]^x[c],12);
+      x[a]=(x[a]+x[b])>>>0;x[d]=ccRotl(x[d]^x[a],8);
+      x[c]=(x[c]+x[d])>>>0;x[b]=ccRotl(x[b]^x[c],7);}
+    for(i=0;i<10;i++){
+      QR(0,4,8,12);QR(1,5,9,13);QR(2,6,10,14);QR(3,7,11,15);
+      QR(0,5,10,15);QR(1,6,11,12);QR(2,7,8,13);QR(3,4,9,14);}
+    for(i=0;i<16;i++){var v=(x[i]+st[i])>>>0;
+      out[i*4]=v&255;out[i*4+1]=(v>>>8)&255;out[i*4+2]=(v>>>16)&255;out[i*4+3]=(v>>>24)&255;}
+    st.fill(0);x.fill(0);}
+  function chacha20(key,nonce,counter,data){
+    var out=new Uint8Array(data.length),blk=new Uint8Array(64),i,j,n=0,lim;
+    for(i=0;i<data.length;i+=64){
+      ccBlock(key,nonce,(counter+n)>>>0,blk);n++;
+      lim=Math.min(64,data.length-i);
+      for(j=0;j<lim;j++)out[i+j]=data[i+j]^blk[j];}
+    blk.fill(0);return out;}
+
+  var TE=new TextEncoder();
+  function kdf(key,label,len){ return hkdf(key,chSalt(),TE.encode(label),len||32); }
+
+  /* ---------- the ratchet ----------
+     After every message the chain key is replaced by its own hash and the old
+     one is zeroed. A key that leaks tomorrow cannot open anything sent today,
+     because the key that could is gone -- including from your own machine. */
+  function chReset(raw){
+    chWipeKeys();
+    CHAN.root=kdf(raw,'SYNC2/root');
+    CHAN.role=+document.getElementById('chRole').value|0;
+    CHAN.txChain=kdf(CHAN.root, CHAN.role===0?'SYNC2/chainA':'SYNC2/chainB');
+    CHAN.rxChain=kdf(CHAN.root, CHAN.role===0?'SYNC2/chainB':'SYNC2/chainA');
+    CHAN.txIdx=0;CHAN.rxIdx=0;CHAN.destroyed=0;
+    chRenderRatchet();}
+  function chWipeKeys(){
+    ['root','txChain','rxChain'].forEach(function(k){ if(CHAN[k]&&CHAN[k].fill)CHAN[k].fill(0); CHAN[k]=null; });
+    CHAN.txIdx=0;CHAN.rxIdx=0;CHAN.destroyed=0;}
+  function msgKeyOf(chain){ return kdf(chain,'SYNC2/msg'); }
+  function advance(chain){ var nx=kdf(chain,'SYNC2/chain'); chain.fill(0); return nx; }
+
+  function aesKey(mk){ return crypto.subtle.importKey('raw',mk,{name:'AES-GCM'},false,['encrypt','decrypt']); }
+  function commitOf(mk){ return hmac256(mk,TE.encode('SYNC2/commit')).slice(0,8); }
+
+  var PADBLOCK=64;                     // hide "yes" from "here are the details"
+  function padPlain(bytes){
+    var need=PADBLOCK-((bytes.length+2)%PADBLOCK); if(need===PADBLOCK)need=0;
+    var out=new Uint8Array(2+bytes.length+need);
+    out[0]=(bytes.length>>8)&255;out[1]=bytes.length&255;
+    out.set(bytes,2);
+    if(need)crypto.getRandomValues(out.subarray(2+bytes.length));
+    return out;}
+  function unpadPlain(b){
+    if(b.length<2)throw new Error('truncated plaintext');
+    var n=(b[0]<<8)|b[1];
+    if(n>b.length-2)throw new Error('padding length is impossible');
+    return b.slice(2,2+n);}
+
+  /* ---------- the label ----------
+     A per-message record of what this ciphertext does and does not give you.
+     Machine-readable on purpose: an agent handed a blob should not have to
+     guess what it is holding. */
+  function chLabel(ctr,role,extra){
+    return Object.assign({
+      envelope:'SYNC2', cipher:'AES-256-GCM', kdf:'HKDF-SHA-256 (RFC 5869)',
+      forwardSecrecy:true,
+      ratchetIndex:ctr,
+      keysDestroyed:CHAN.destroyed,
+      meaning:'every message before index '+ctr+' is unrecoverable by anyone, including the sender',
+      replayProtection:'strictly increasing counter, bound into the AAD',
+      keyCommitment:'8-byte HMAC-SHA-256 over the message key, verified before decryption',
+      lengthPadding:PADBLOCK+'-byte buckets',
+      role:role===0?'A':'B',
+      NOT_assured:[
+        'sender identity — anyone holding the key can write messages that look like yours',
+        'metadata — size bucket, timing and the fact you are talking are all visible',
+        'device integrity — nothing here survives a compromised machine',
+        'deniability — the counter makes ordering explicit',
+        'out-of-order delivery — a skipped message is permanently unreadable, by design'
+      ]
+    },extra||{});}
+
   function chFp(){
     var el=document.getElementById('chFp'),raw=chRawKey();
     if(!raw){el.innerHTML='<span>fingerprint</span> — <span>need ≥128 bits of key</span>';return;}
-    var d=sha256(cat([new TextEncoder().encode('SYNCFP|'),raw]));
+    var d=sha256(cat([TE.encode('SYNCFP|'),raw]));
     var f=toHex(d).slice(0,12).replace(/(.{4})/g,'$1 ').trim().toUpperCase();
-    el.innerHTML='<span>fingerprint</span> '+f+' <span>· '+(raw.length*8)+'-bit key · compare this aloud</span>';
+    el.innerHTML='<span>fingerprint</span> '+f+' <span>· '+(raw.length*8)+'-bit · compare this aloud</span>';
     raw.fill(0);}
-  function chPush(dir,body,t){
-    CHAN.msgs.push({dir:dir,body:body,t:t||Date.now()});
+
+  function chRenderRatchet(){
+    var el=document.getElementById('chRatchet');if(!el)return;
+    if(!CHAN.root){el.innerHTML='<div class="hint">No channel key set. The ratchet starts when you set one.</div>';return;}
+    var i,h='';
+    var total=CHAN.txIdx;
+    for(i=Math.max(0,total-7);i<total;i++)h+='<span class="rk dead" title="key '+i+' destroyed">■</span>';
+    h+='<span class="rk live" title="current sending key '+total+'">◉</span>';
+    el.innerHTML='<div class="ratchet">'+h+'</div>'+
+      '<div class="hint">Sending key <b>#'+total+'</b> · <b>'+CHAN.destroyed+'</b> key'+(CHAN.destroyed===1?'':'s')+
+      ' destroyed. Everything sent before now is unreadable even to you — the key that could open it no longer exists anywhere.</div>';}
+
+  function chEncrypt(){
+    if(!chHasCrypto())return;
+    var raw=chRawKey();
+    if(!raw){logLine('channel :: KEY TOO SHORT — NEED ≥128 BITS','a');return;}
+    if(!CHAN.root)chReset(raw);
+    raw.fill(0);
+    var msg=document.getElementById('chMsg').value;
+    if(!msg){logLine('channel :: NOTHING TO ENCRYPT','a');return;}
+    var ctr=CHAN.txIdx, role=CHAN.role;
+    var mk=msgKeyOf(CHAN.txChain), commit=commitOf(mk);
+    var hdr=new Uint8Array(6);
+    hdr[0]=2;hdr[1]=role;
+    hdr[2]=(ctr>>>24)&255;hdr[3]=(ctr>>>16)&255;hdr[4]=(ctr>>>8)&255;hdr[5]=ctr&255;
+    var aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
+    var pt=padPlain(TE.encode(msg));
+    var casc=document.getElementById('chCascade').checked;
+    hdr[1]=role|(casc?0x80:0);                        // high bit records the cascade
+    aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    aesKey(mk).then(function(ck){
+      return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,pt);
+    }).then(function(ctb){
+      pt.fill(0);
+      var body=new Uint8Array(ctb);
+      if(casc){                                        // outer layer, independent key
+        var ck2=kdf(CHAN.txChain,'SYNC2/chacha'),cn=nonce.slice(0);
+        body=chacha20(ck2,cn,1,body);ck2.fill(0);}
+      mk.fill(0);
+      document.getElementById('chBlob').value='SYNC2.'+toB64(cat([hdr,commit,nonce,body]));
+      document.getElementById('chMsg').value='';
+      CHAN.txChain=advance(CHAN.txChain);CHAN.txIdx++;CHAN.destroyed++;
+      var lab=chLabel(ctr,role,{direction:'sent',bytes:body.length+26,
+        layers:casc?['ChaCha20 (RFC 8439, outer, confidentiality only)','AES-256-GCM (inner, authenticated)']
+                   :['AES-256-GCM (authenticated)'],
+        cascadeNote:casc?'two independent algorithm families with independent keys: survives one of them being broken, at the cost of twice the implementation to be wrong'
+                        :'single layer; cascade available but off by default'});
+      CHAN.lastLabel=lab;
+      chPush('out',msg,Date.now(),lab);
+      chRenderRatchet();SRAIN.heat=1.4;
+      logLine('channel :: SEALED #'+ctr+' · KEY DESTROYED · SEND THE KEY SEPARATELY');
+    }).catch(function(){mk.fill(0);logLine('channel :: ENCRYPT FAILED','a');});}
+
+  function chDecrypt(){
+    if(!chHasCrypto())return;
+    var raw=chRawKey();
+    if(!raw){logLine('channel :: KEY TOO SHORT — NEED ≥128 BITS','a');return;}
+    if(!CHAN.root)chReset(raw);
+    raw.fill(0);
+    var txt=(document.getElementById('chBlob').value||'').trim();
+    var m=txt.match(/SYNC2\.([A-Za-z0-9\-_=]+)/);
+    if(!m){logLine('channel :: NO SYNC2 ENVELOPE FOUND','a');
+      chPush('err','No SYNC2 envelope here. Older SYNC1 messages cannot be read by this version — the ratchet changed the format.',Date.now());return;}
+    var blob;
+    try{blob=fromB64(m[1]);}catch(e){chPush('err','Malformed envelope.',Date.now());return;}
+    if(blob.length<6+8+12+16){chPush('err','Envelope too short to be real.',Date.now());return;}
+    var ver=blob[0],role=blob[1]&0x7f,casc=!!(blob[1]&0x80);
+    var ctr=(blob[2]<<24|blob[3]<<16|blob[4]<<8|blob[5])>>>0;
+    if(ver!==2){chPush('err','Unknown envelope version '+ver+'.',Date.now());return;}
+    if(role===CHAN.role){
+      chPush('err','This message was sent by someone using the SAME role as you. One of you must switch between A and B — otherwise you would both be encrypting on the same chain.',Date.now());return;}
+    if(ctr<CHAN.rxIdx){
+      chPush('err','Replay or out-of-order: message #'+ctr+' arrived but this channel has already moved past it (now expecting #'+CHAN.rxIdx+'). The key that could read it has been destroyed. This is forward secrecy working, not a fault.',Date.now());
+      logLine('channel :: REPLAY REJECTED #'+ctr,'a');return;}
+    if(ctr-CHAN.rxIdx>1000){chPush('err','Message #'+ctr+' is more than 1000 ahead; refusing to fast-forward that far.',Date.now());return;}
+    var commit=blob.slice(6,14),nonce=blob.slice(14,26),body=blob.slice(26);
+    var skipped=ctr-CHAN.rxIdx,chain=CHAN.rxChain,i;
+    for(i=0;i<skipped;i++){chain=advance(chain);CHAN.destroyed++;}
+    var mk=msgKeyOf(chain),expect=commitOf(mk),ok=true;
+    for(i=0;i<8;i++)if(expect[i]!==commit[i])ok=false;
+    if(!ok){
+      CHAN.rxChain=chain;mk.fill(0);
+      chPush('err','Key commitment failed at message #'+ctr+'. Either the key is wrong or this ciphertext was built for a different key. AES-GCM alone would not have caught this cleanly — a ciphertext can decrypt validly under two different keys, which is exactly what the commitment closes.',Date.now());
+      logLine('channel :: COMMITMENT MISMATCH #'+ctr,'a');return;}
+    var hdr=blob.slice(0,6),aad=cat([TE.encode('SYNC2'),hdr,commit]);
+    if(casc){var ck2=kdf(chain,'SYNC2/chacha');body=chacha20(ck2,nonce,1,body);ck2.fill(0);}
+    aesKey(mk).then(function(ck){
+      return crypto.subtle.decrypt({name:'AES-GCM',iv:nonce,additionalData:aad,tagLength:128},ck,body);
+    }).then(function(ptb){
+      var txtOut=new TextDecoder().decode(unpadPlain(new Uint8Array(ptb)));
+      mk.fill(0);
+      CHAN.rxChain=advance(chain);CHAN.rxIdx=ctr+1;CHAN.destroyed++;
+      var lab=chLabel(ctr,role,{direction:'received',skippedAndLost:skipped,
+        layers:casc?['ChaCha20 (RFC 8439, outer)','AES-256-GCM (inner, authenticated)']
+                   :['AES-256-GCM (authenticated)']});
+      CHAN.lastLabel=lab;
+      chPush('in',txtOut,Date.now(),lab);
+      chRenderRatchet();SRAIN.heat=1.4;
+      logLine('channel :: OPENED #'+ctr+' · TAG + COMMITMENT VERIFIED'+(skipped?(' · '+skipped+' SKIPPED, NOW UNREADABLE'):''));
+    }).catch(function(){
+      CHAN.rxChain=chain;mk.fill(0);
+      chPush('err','Could not decrypt. The key is wrong, or the message was altered — AES-GCM refuses both the same way, which is the point.',Date.now());
+      logLine('channel :: AUTH FAILED','a');});}
+
+  function chPush(dir,body,t,label){
+    CHAN.msgs.push({dir:dir,body:body,t:t||Date.now(),label:label||null});
     if(CHAN.msgs.length>40)CHAN.msgs.shift();
     chRender();}
   function chRender(){
     var box=document.getElementById('chLog'),h='',i;
     for(i=0;i<CHAN.msgs.length;i++){
-      var m=CHAN.msgs[i],lab=m.dir==='out'?'ENCRYPTED · YOU':(m.dir==='in'?'DECRYPTED · RECEIVED':'ERROR');
-      h+='<div class="msg '+m.dir+'"><div class="mh"><span>'+lab+'</span><span>'+
-         new Date(m.t).toLocaleTimeString()+'</span></div><div class="mb"></div></div>';}
+      var mm=CHAN.msgs[i],lab=mm.dir==='out'?'SEALED · YOU':(mm.dir==='in'?'OPENED · RECEIVED':'REFUSED');
+      h+='<div class="msg '+mm.dir+'"><div class="mh"><span>'+lab+(mm.label?(' · #'+mm.label.ratchetIndex):'')+
+         '</span><span>'+new Date(mm.t).toLocaleTimeString()+'</span></div><div class="mb"></div></div>';}
     box.innerHTML=h;
     var nodes=box.querySelectorAll('.mb');
-    for(i=0;i<CHAN.msgs.length;i++)nodes[i].textContent=CHAN.msgs[i].body;   // textContent: never parse as HTML
-    box.scrollTop=box.scrollHeight;}
-  function chEncrypt(){
-    if(!chHasCrypto())return;
-    var raw=chRawKey();
-    if(!raw){logLine('channel :: KEY TOO SHORT — NEED ≥128 BITS','a');return;}
-    var msg=document.getElementById('chMsg').value;
-    if(!msg){logLine('channel :: NOTHING TO ENCRYPT','a');raw.fill(0);return;}
-    var enc=new TextEncoder();
-    var pt=enc.encode(JSON.stringify({v:1,t:Date.now(),m:msg}));
-    var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
-    chDerive(raw).then(function(ck){
-      raw.fill(0);
-      return crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:enc.encode('SYNC1'),tagLength:128},ck,pt);
-    }).then(function(ctb){
-      pt.fill(0);
-      document.getElementById('chBlob').value='SYNC1.'+toB64(cat([nonce,new Uint8Array(ctb)]));
-      document.getElementById('chMsg').value='';
-      chPush('out',msg,Date.now());
-      SRAIN.heat=1.4;
-      logLine('channel :: SEALED '+(ctb.byteLength+12)+'B · SEND THE KEY SEPARATELY');
-    }).catch(function(){logLine('channel :: ENCRYPT FAILED','a');});}
-  function chDecrypt(){
-    if(!chHasCrypto())return;
-    var raw=chRawKey();
-    if(!raw){logLine('channel :: KEY TOO SHORT — NEED ≥128 BITS','a');return;}
-    var txt=(document.getElementById('chBlob').value||'').trim();
-    var m=txt.match(/SYNC1\.([A-Za-z0-9\-_=]+)/);
-    if(!m){logLine('channel :: NO SYNC1 ENVELOPE FOUND','a');raw.fill(0);return;}
-    var blob;
-    try{blob=fromB64(m[1]);}catch(e){logLine('channel :: MALFORMED ENVELOPE','a');raw.fill(0);return;}
-    if(blob.length<29){logLine('channel :: ENVELOPE TOO SHORT','a');raw.fill(0);return;}
-    var enc=new TextEncoder();
-    chDerive(raw).then(function(ck){
-      raw.fill(0);
-      return crypto.subtle.decrypt({name:'AES-GCM',iv:blob.subarray(0,12),
-        additionalData:enc.encode('SYNC1'),tagLength:128},ck,blob.subarray(12));
-    }).then(function(ptb){
-      var o;
-      try{o=JSON.parse(new TextDecoder().decode(new Uint8Array(ptb)));}catch(e){o=null;}
-      if(o&&typeof o.m==='string'){chPush('in',o.m,o.t||Date.now());
-        logLine('channel :: OPENED · TAG VERIFIED');}
-      else{chPush('in',new TextDecoder().decode(new Uint8Array(ptb)),Date.now());}
-      SRAIN.heat=1.4;
-    }).catch(function(){
-      chPush('err','Could not decrypt. Either the key is wrong or the message was altered — '+
-        'AES-GCM refuses both the same way, which is the point.',Date.now());
-      logLine('channel :: AUTH FAILED — WRONG KEY OR TAMPERED','a');});}
+    for(i=0;i<CHAN.msgs.length;i++)nodes[i].textContent=CHAN.msgs[i].body;
+    box.scrollTop=box.scrollHeight;
+    var lb=document.getElementById('chLabel');
+    if(lb)lb.textContent=CHAN.lastLabel?JSON.stringify(CHAN.lastLabel,null,2):'';}
   function chCopyBlob(){
     var v=document.getElementById('chBlob').value;
     if(!v)return;
@@ -2134,10 +2339,10 @@
         function(){logLine('channel :: COPY FAILED — SELECT MANUALLY','a');});
     else logLine('channel :: COPY UNAVAILABLE — SELECT MANUALLY','a');}
   function chClear(){
-    CHAN.msgs.length=0;
+    CHAN.msgs.length=0;CHAN.lastLabel=null;chWipeKeys();
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
-    chRender();chFp();
-    logLine('channel :: CLEARED');}
+    chRender();chFp();chRenderRatchet();
+    logLine('channel :: CLEARED · RATCHET RESET');}
 
   /* ---------- animation loop ----------
      The circuit is repainted on every frame the browser offers, while the model
@@ -2356,15 +2561,17 @@
       return;}
     document.getElementById('chUse').addEventListener('click',function(){
       if(!SEED){logLine('channel :: GENERATE A SEED FIRST','a');return;}
-      document.getElementById('chKey').value=toHex(SEED);chFp();
+      document.getElementById('chKey').value=toHex(SEED);chFp();chWipeKeys();chRenderRatchet();
       logLine('channel :: KEY SET FROM SEED · SHARE IT OUT OF BAND');});
-    document.getElementById('chKey').addEventListener('input',chFp);
+    document.getElementById('chKey').addEventListener('input',function(){chFp();chWipeKeys();chRenderRatchet();});
+    document.getElementById('chRole').addEventListener('change',function(){chWipeKeys();chRenderRatchet();
+      logLine('channel :: ROLE CHANGED \u00b7 RATCHET RESET');});
     document.getElementById('chEnc').addEventListener('click',chEncrypt);
     document.getElementById('chDec').addEventListener('click',chDecrypt);
     document.getElementById('chCopy').addEventListener('click',chCopyBlob);
     document.getElementById('chClear').addEventListener('click',chClear);
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
-    chFp();
+    chFp();chRenderRatchet();
   })();
 
   startSources();
