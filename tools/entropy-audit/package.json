@@ -1,0 +1,10 @@
+{
+  "name": "entropy-audit",
+  "version": "1.0.0",
+  "description": "Measure whether data is actually random (NIST SP 800-90B) and whether a p-value on a time series is lying to you (Newey-West). Zero dependencies.",
+  "main": "index.js",
+  "bin": { "entropy-audit": "./cli.js", "entropy-audit-mcp": "./mcp-server.js" },
+  "scripts": { "test": "node test.js" },
+  "license": "MIT",
+  "files": ["index.js", "cli.js", "mcp-server.js", "README.md"]
+}
