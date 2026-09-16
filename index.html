@@ -179,6 +179,14 @@
   .share{font-size:10.5px;color:var(--bright);word-break:break-all;background:rgba(0,0,0,.5);
     border:1px solid var(--hair);border-radius:4px;padding:6px 8px;margin-top:5px;user-select:all;line-height:1.5}
   .share b{color:var(--fly);font-weight:400}
+  .ldg{display:flex;gap:8px;font-size:9.5px;color:var(--dim);padding:3px 0;border-bottom:1px solid var(--hair);
+    font-variant-numeric:tabular-nums}
+  .ldg span:first-child{flex:1;color:var(--txt)}
+  .ldg span{white-space:nowrap}
+  .ldg.bad span:first-child{color:var(--amber)}
+  .ldg.tot{border-bottom:0;color:var(--grn);margin-top:3px}
+  .ldg.mb{border-bottom:0;color:var(--fly);margin-top:2px}
+  .ldg.tot span:first-child{color:var(--grn)}
   .ratchet{display:flex;gap:5px;align-items:center;margin:8px 0 4px;flex-wrap:wrap}
   .rk{font-size:15px;line-height:1}
   .rk.dead{color:var(--faint)}
@@ -329,6 +337,7 @@
       <div class="sk"><span id="sdFmtName">hex</span><span id="sdStamp"></span></div>
       <div class="sdval" id="sdVal"></div>
       <div class="tabs" id="sdTabs"></div>
+      <div id="sdLedger"></div>
 
       <div class="stage" style="margin-top:13px">split for backup <b>· Shamir over GF(2⁸)</b></div>
       <div class="hint">Losing a key is far more common than having one stolen. Split it into <b>n</b> pieces of which any <b>k</b> rebuild it &mdash; store them apart. Any k&minus;1 pieces reveal <em>nothing</em>: every possible key stays equally likely.</div>
@@ -1502,6 +1511,9 @@
         detectorPhysical:{N:PHYS.N,Z:Sp.z,Zraw:Sp.raw,vif:Sp.vif,p:fmtP(Sp.z)},
         controlAlgorithmic:{N:ALGO.N,Z:Sa.z,Zraw:Sa.raw,vif:Sa.vif,p:fmtP(Sa.z)},
         detectorMinusControl:(PHYS.N>=60&&ALGO.N>=60)?(function(){var d=(Sp.z-Sa.z)/Math.SQRT2;return {Z:d,p:fmtP(d)};})():null},
+      entropyLedger:LEDGER.length?{note:'each source conditioned to its measured entropy before mixing; bits are claimed, not assumed',sources:LEDGER,
+        mbTransform:MBFP?{fingerprint:MBFP,rounds:12,kenyonCells:FB.NKC,compartments:COMP.length,bitsAdded:0,
+          note:'conditioned pool run through the session connectome; fingerprint mixed into the HKDF info string. Deterministic in the IKM, so zero entropy added; info is not security-load-bearing in HKDF.'}:null}:null,
       flyBrain:{note:'paired differences against a matched-noise twin brain; not part of the statistic above',
         N:FBS.N,familiarityZ:FBS.famZ,familiarityVif:FBS.famVif,ringZ:FBS.ringZ,ringVif:FBS.ringVif,
         KC:FB.NKC,clawsMean:FB.clawMean,glomeruli:FB.NPN,codingLevel:FB.SPARSE,
@@ -1626,9 +1638,13 @@
     EP('mic','AMBIENT.AUDIO','optin','Low bits of the microphone noise floor. Needs permission. Never recorded, never played back, never sent — samples are hashed and dropped. <b>Best trick:</b> tune a radio <em>between</em> stations and point the mic at the hiss. A station\'s content is public and worth nothing; the static is local thermal noise nobody can reproduce.'),
     EP('cam','SENSOR.SHOT.NOISE','optin','Low bits of camera frames. Photon shot noise and sensor dark current are real physics at a high rate — the strongest source here. Needs permission. Frames are hashed and dropped, never stored, never shown, never sent. Works with the lens covered.'),
     EP('radio','RADIO.STATIC','optin','Spectrum of a radio tuned <b>between</b> stations, via line-in or mic. <b>Sweep the dial slowly while it samples</b> \u2014 a parked dial resamples one noise process and the samples are correlated; sweeping visits independent bands, and the page measures whether you are actually sweeping rather than taking your word for it. Broadband thermal and atmospheric noise at your antenna, at your location, at that microsecond \u2014 an attacker would need a receiver where you are. Sampled as the low bits of every FFT bin, so one input yields hundreds of independent channels. Carrier detection warns you if you are on a station: <em>a station\'s content is public and worth nothing.</em>'),
+    EP('vsync','VSYNC.JITTER','local','Sub-millisecond jitter in the display\'s frame delivery. The compositor never lands exactly on the refresh interval, and the residual is scheduling and thermal noise on this machine.'),
+    EP('drift','CLOCK.DRIFT','local','Drift between two <em>independent physical oscillators</em>: the audio sample clock and the system performance clock. Separate crystals age and warm at different rates, so the residual between them is real physics, not software.'),
+    EP('pad','GAMEPAD.NOISE','optin','Analog stick and trigger ADC noise from a connected controller. A stick at rest still jitters in its last bits. Plug one in and leave it alone.'),
     EP('dice','PHYSICAL.DICE','local','Real dice you roll and type below. The one source an attacker genuinely cannot observe, at 2.585 bits per d6 roll. Slow, and worth it.',
        Math.log(6)/Math.LN2, 64),
     EP('manual','YOUR.SECRET','local','Dice rolls or characters you type below, plus your keystroke timing. Only you know these — the one source nobody else could reconstruct.'),
+    EP('fly','MB.SPARSECODE','public','The mushroom body\u2019s own output: which Kenyon cells fired this frame, what each MBON compartment read, and where the ring-attractor bump is pointing. It is a <em>deterministic</em> function of the arms that drove it, so it is counted as <b>zero secret bits</b> \u2014 the same rule the public swarm gets. It is mixed anyway because it costs nothing and because the sparse code is a 1917-cell fingerprint of everything the session has seen.'),
     EP('swarm','PUBLIC.SWARM','public','The live arms: drand, Wikipedia, Bluesky, Mastodon, Coinbase. Unpredictable in advance but PUBLIC — counted as zero secret bits.')
   ];
   var EBY={};EPOOL.forEach(function(P){EBY[P.id]=P;});
@@ -1676,6 +1692,28 @@
     return Math.min(P.n*P.H0,EFOLD*8);}
   function etotal(){var t=0;EPOOL.forEach(function(P){if(P.on)t+=ebits(P);});return t;}
 
+  /* ---------- mushroom-body sampler ----------
+     The sparse code is the most information-dense thing on the page: 95 of 1917
+     cells fire, so a frame picks one of ~C(1917,95) codes, and which 95 depends
+     on every arm reading that drove the antennal lobe plus the whole depression
+     history in the compartment weights. As ENTROPY it is worth nothing -- the
+     drive is public and the wiring is derived from a seed already in the pool --
+     and it is classed public and credited zero accordingly. It is sampled
+     because mixing it is free and because it makes the pool a function of the
+     network state rather than only of the raw feeds. */
+  var FLYS={t:0,k:0};
+  function flySample(){
+    var B=FB.sig;if(!B||!B.act||!B.act.length)return;
+    if((FLYS.k++%6)!==0)return;                       // ~10 Hz, not 60
+    var a=B.act,n=Math.min(64,a.length),buf=new Uint8Array(n*2+COMP.length*2+6),o=0,i,v;
+    for(i=0;i<n;i++){buf[o++]=a[i]&255;buf[o++]=(a[i]>>8)&255;}
+    for(i=0;i<COMP.length;i++){v=Math.round(B.cm[i]*65535)&65535;buf[o++]=v&255;buf[o++]=(v>>8)&255;}
+    v=Math.round((B.head+Math.PI)*10430)&65535;buf[o++]=v&255;buf[o++]=(v>>8)&255;
+    v=Math.round(B.pva*65535)&65535;buf[o++]=v&255;buf[o++]=(v>>8)&255;
+    v=Math.round(B.ovl*65535)&65535;buf[o++]=v&255;buf[o++]=(v>>8)&255;
+    var d=sha256(buf.subarray(0,o));buf.fill(0);
+    epush('fly',d.subarray(0,8));}
+
   // ---------- collectors ----------
   function jitterBytes(n){
     var out=new Uint8Array(n),acc=2166136261>>>0,last=performance.now(),i,j,t,d;
@@ -1688,6 +1726,8 @@
   function edrip(){                                   // continuous background collection
     var c=new Uint8Array(48);crypto.getRandomValues(c);epush('csprng',c);c.fill(0);
     epush('jitter',jitterBytes(8));                   // ~43 s to assess the floor, ~4 min for jitter
+    if(EBY.drift.on)driftSample();
+    if(EBY.pad.on)padSample();
   }
   var PAD={pts:[],last:0},DICEN=0;
   function padPoint(x,y,p){
@@ -1754,6 +1794,42 @@
     if(RAD.stream)RAD.stream.getTracks().forEach(function(t){t.stop();});
     if(RAD.ctx&&RAD.ctx.close)try{RAD.ctx.close();}catch(e){}
     RAD={flat:null,peak:0,flux:0,prev:null};logLine('radio.entropy :: STOPPED');}
+
+  /* ---------- vsync, oscillator drift, gamepad ----------
+     All three are local and need no permission. The drift source is the one
+     worth a note: AudioContext.currentTime is driven by the audio hardware's
+     crystal and performance.now() by the system timer. They are separate
+     physical oscillators, so the residual between them is genuine hardware
+     noise rather than anything software chose. */
+  var VS={last:0},DR={ctx:null,t0:0,a0:0,last:0},GP={seen:false};
+  function vsyncSample(ts){
+    if(VS.last){
+      var dt=ts-VS.last,fr=(dt-Math.floor(dt))*1e6;
+      epush('vsync',[(fr>>>0)&255,((fr>>>8)&255)]);
+    }
+    VS.last=ts;}
+  function driftCtx(){
+    if(DR.ctx)return DR.ctx;
+    try{var AC=window.AudioContext||window.webkitAudioContext;
+      DR.ctx=new AC();DR.t0=performance.now()/1000;DR.a0=DR.ctx.currentTime;
+    }catch(e){DR.ctx=null;}
+    return DR.ctx;}
+  function driftSample(){
+    var c=driftCtx();if(!c||c.state==='suspended')return;
+    var pd=performance.now()/1000-DR.t0, ad=c.currentTime-DR.a0;
+    if(ad<=0)return;
+    var resid=(pd-ad)*1e9;                       // nanosecond residual between crystals
+    var d=resid-DR.last;DR.last=resid;
+    var v=Math.round(d)>>>0;
+    epush('drift',[v&255,(v>>>8)&255,(v>>>16)&255]);}
+  function padSample(){
+    if(!navigator.getGamepads)return;
+    var gs=navigator.getGamepads(),i,j,g,o=[],dv=new DataView(new ArrayBuffer(4));
+    for(i=0;i<gs.length;i++){g=gs[i];if(!g||!g.connected)continue;
+      GP.seen=true;
+      for(j=0;j<g.axes.length;j++){dv.setFloat32(0,g.axes[j]);o.push(dv.getUint8(3));}
+      for(j=0;j<g.buttons.length&&j<8;j++){dv.setFloat32(0,g.buttons[j].value);o.push(dv.getUint8(3));}}
+    if(o.length)epush('pad',o);}
 
   var CAM={};
   function camOn(P){
@@ -1875,23 +1951,97 @@
     return bad;}
 
   // ---------- extraction ----------
-  var SEED=null,SFMT='hex';
+  var SEED=null,SFMT='hex',LEDGER=[],MBFP=null;
+  /* ---------- entropy-conditioned extraction ----------
+     Each source is first conditioned down to no more than the entropy actually
+     MEASURED in it, and only then mixed. A source producing megabytes at 0.1
+     bits a byte can no longer swamp the input by sheer volume over one
+     producing a hundred bytes at 2.5, and the ledger below becomes structurally
+     true rather than decorative -- what it reports is what went in.
+
+     Being straight about the benefit: this changes auditability, not raw
+     strength. HKDF would have extracted fine either way, and the CSPRNG floor
+     dominates regardless. What it buys is that the per-source contribution is
+     now a fact about the construction instead of a number on a screen, and a
+     source that degrades mid-session shrinks its own contribution
+     automatically. */
+  /* ---------- the MB-transform ----------
+     A genuinely novel USE of the random data, and it is worth being exact about
+     what it is and is not.
+
+     What it does: the conditioned pool is run through this session's own
+     connectome. Bytes become antennal-lobe drive, the lobe divisively
+     normalises, the 1917 Kenyon cells fan out over their claws, APL picks the
+     top 5%, and five MBON compartments read the code at their own depression
+     rates -- so each round's output depends on every round before it through
+     weights that are still decaying. Twelve rounds of that are hashed into a
+     32-byte fingerprint, and the fingerprint goes into the HKDF info string.
+
+     What it is NOT: entropy. It is a deterministic function of material already
+     in the IKM, so it adds exactly zero bits, and saying otherwise would be a
+     lie the ledger would have to carry. It is also not load-bearing for
+     security -- HKDF's guarantee does not depend on info being anything in
+     particular, which is precisely why it is safe to put a homemade transform
+     there and nowhere else. No invented primitive touches the key path.
+
+     What it buys: the seed is bound to this tab's wiring (FB.wire is drawn from
+     crypto.getRandomValues at boot and never leaves the page), so two visitors
+     feeding identical bytes into identical sources still derive different keys;
+     and the derivation is a fly brain, which is the point of the exercise. */
+  function mbTransform(ikm){
+    var B=fbBrain(),drv=new Float32Array(FB.NPN),ring=new Float32Array(FB.NW);
+    var acc=[new TextEncoder().encode('SYNCHRONICITY/mb-transform/v1')],r,i,j,k,h;
+    h=sha256(ikm);
+    for(r=0;r<12;r++){
+      // expand the running digest into antennal-lobe drive, signed and centred
+      var e=hkdf(h,new Uint8Array([r]),new TextEncoder().encode('mb-drive'),FB.NPN+FB.NW);
+      for(i=0;i<FB.NPN;i++)drv[i]=(e[i]-127.5)/64;
+      for(i=0;i<FB.NW;i++)ring[i]=(e[FB.NPN+i]-127.5)/64;
+      fbStep(B,drv,ring);
+      var a=B.act,n=Math.min(96,a.length),out=new Uint8Array(n*2+COMP.length*2+2),o=0,v;
+      for(i=0;i<n;i++){out[o++]=a[i]&255;out[o++]=(a[i]>>8)&255;}
+      for(k=0;k<COMP.length;k++){v=Math.round(B.cm[k]*65535)&65535;out[o++]=v&255;out[o++]=(v>>8)&255;}
+      v=Math.round((B.head+Math.PI)*10430)&65535;out[o++]=v&255;out[o++]=(v>>8)&255;
+      acc.push(out.subarray(0,o).slice());
+      h=sha256(cat([h,out.subarray(0,o)]));
+      out.fill(0);e.fill(0);}
+    var fp=sha256(cat(acc));
+    drv.fill(0);ring.fill(0);
+    return fp;}
+
   function extractSeed(){
     var enc=new TextEncoder();
     var floor=new Uint8Array(32);crypto.getRandomValues(floor);      // mandatory, fresh, never stored
     var salt=new Uint8Array(32);crypto.getRandomValues(salt);
     var ta=document.getElementById('sdta'),txt=ta?ta.value:'';
     if(txt)epush('manual',enc.encode(txt));
-    var parts=[enc.encode('SYNCHRONICITY/seed/v1'),floor,jitterBytes(16)];
+    var parts=[enc.encode('SYNCHRONICITY/seed/v2'),floor,jitterBytes(16)];
+    LEDGER=[];
     EPOOL.forEach(function(P){
       if(!P.on||!P.buf.length)return;
-      parts.push(enc.encode('|'+P.id+':'+P.n+'|'));
-      parts.push(Uint8Array.from(P.buf));});
+      var raw=Uint8Array.from(P.buf);
+      var bits=Math.round(ebits(P));
+      // conditioned length: never more than the measured entropy, never less
+      // than a token 8 bytes so an honest-but-unclaimable source still mixes
+      var outLen=Math.max(8,Math.min(64,Math.ceil(bits/8)));
+      var cond=hkdf(raw,enc.encode('SYNC/src/'+P.id),enc.encode('condition'),outLen);
+      parts.push(enc.encode('|'+P.id+':'+bits+'|'));
+      parts.push(cond);
+      LEDGER.push({id:P.id,label:P.label,samples:P.n,bitsClaimed:bits,
+        conditionedBytes:outLen,healthy:!(P.rctFail||P.aptFail),
+        kind:P.cls==='public'?'public (0 secret bits by definition)':(P.cls==='floor'?'floor':P.cls)});
+      raw.fill(0);});
     var ikm=cat(parts);
     var purpose=(document.getElementById('sdPurpose').value||'general').slice(0,64);
     var len=(parseInt(document.getElementById('sdLen').value,10)||256)/8;
-    var out=hkdf(ikm,salt,enc.encode('SYNCHRONICITY_MACHINE/seed/v1|'+purpose),len);
-    ikm.fill(0);floor.fill(0);salt.fill(0);
+    // the fly brain binds the derivation to this session's connectome. Zero bits
+    // added -- info is the one place a homemade transform is harmless.
+    var mbfp=null;try{mbfp=mbTransform(ikm);}catch(e){}
+    var info=cat([enc.encode('SYNCHRONICITY_MACHINE/seed/v2|'+purpose),
+                  mbfp?enc.encode('|mb|'):new Uint8Array(0),mbfp||new Uint8Array(0)]);
+    MBFP=mbfp?toHex(mbfp).slice(0,16):null;
+    var out=hkdf(ikm,salt,info,len);
+    ikm.fill(0);floor.fill(0);salt.fill(0);if(mbfp)mbfp.fill(0);
     return out;}
 
   // ---------- output formats ----------
@@ -1932,6 +2082,7 @@
         if(P.id==='mic'){P.on?micOn(P):micOff();}
         if(P.id==='cam'){P.on?camOn(P):camOff();}
         if(P.id==='radio'){P.on?radOn(P):radOff();}
+        if(P.id==='drift'&&P.on)driftCtx();
         if(P.id==='motion'&&P.on&&!byId.motion._on)enableMotion();
         renderSeed();});
     });
@@ -2008,6 +2159,24 @@
     var f=SFMTS.filter(function(q){return q.k===SFMT;})[0]||SFMTS[0];
     document.getElementById('sdVal').textContent=f.f(SEED);
     document.getElementById('sdFmtName').textContent=f.n+' · '+(SEED.length*8)+'-bit';
+    var lg=document.getElementById('sdLedger');
+    if(lg){
+      if(!LEDGER.length)lg.innerHTML='';
+      else{
+        var tot=0;LEDGER.forEach(function(L){tot+=L.bitsClaimed;});
+        var h='<div class="stage">entropy ledger <b>\u00b7 what actually went in</b></div>'+
+              '<div class="hint">Each source was conditioned to no more than the entropy measured in it before mixing, so these are properties of the construction rather than labels on a screen.</div>';
+        LEDGER.forEach(function(L){
+          h+='<div class="ldg'+(L.healthy?'':' bad')+'"><span>'+L.label+'</span>'+
+             '<span>'+L.samples.toLocaleString()+' samples</span>'+
+             '<span>'+L.bitsClaimed.toLocaleString()+' bits</span>'+
+             '<span>\u2192 '+L.conditionedBytes+' B</span></div>';});
+        h+='<div class="ldg tot"><span>total corroborating</span><span></span><span>'+tot.toLocaleString()+
+           ' bits</span><span>+ CSPRNG floor</span></div>';
+        if(MBFP)h+='<div class="ldg mb"><span>MB-transform</span><span>12 rounds \u00b7 '+FB.NKC+
+           ' KC</span><span>0 bits added</span><span>fp '+MBFP+'</span></div>'+
+           '<div class="hint">The conditioned pool was run through this tab\u2019s connectome and the resulting sparse-code fingerprint went into the HKDF <code>info</code> string. It adds <b>no entropy</b> \u2014 it is a deterministic function of what was already mixed \u2014 but it binds the seed to wiring that was drawn at boot and never left the page, and <code>info</code> is the one place a homemade transform cannot weaken anything.</div>';
+        lg.innerHTML=h;}}
     var tb=document.getElementById('sdTabs');tb.innerHTML='';
     SFMTS.forEach(function(q){
       var b=document.createElement('button');b.type='button';
@@ -2031,7 +2200,8 @@
       P.aptFirst=-1;P.aptI=0;P.aptCount=0;P.aptFail=false;P.aptC=0;});
     var ta=document.getElementById('sdta');if(ta)ta.value='';
     ['ssIn'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-    ['ssOut','ssRes','sdWarn'].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML='';});
+    ['ssOut','ssRes','sdWarn','sdLedger'].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML='';});
+    LEDGER=[];
     DICEN=0;
     var dh=document.getElementById('diceHint');
     if(dh)dh.textContent='Roll a real d6 and press the face you rolled. Slow, and the only source an attacker genuinely cannot observe.';
@@ -2437,10 +2607,12 @@
   var RAF=0,rafFn=(typeof requestAnimationFrame==='function')
     ?function(f){return requestAnimationFrame(f);}
     :function(f){return setTimeout(f,33);};          // degrade to a timer, never throw
-  function flyFrame(){
+  function flyFrame(ts){
     RAF=rafFn(flyFrame);
+    if(typeof ts==='number'&&EBY.vsync&&EBY.vsync.on)vsyncSample(ts);
     if(document.hidden||!FB.sig)return;
     dspStep();
+    if(EBY.fly&&EBY.fly.on)try{flySample();}catch(e){}
     try{drawMB();drawCX();}catch(e){}
   }
 
