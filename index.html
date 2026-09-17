@@ -349,6 +349,35 @@
     </div>
   </div>
 
+  <div class="term panel" id="psPanel">
+    <div class="ptop"><div class="ptitle">> POLYSCRIPT</div><div class="pmeta">a shift cipher rendered across six alphabets</div></div>
+    <div class="hint" style="margin-top:2px">Your idea, made real and honest. Every byte is matched to a symbol and <b>shifted</b> — but the shift comes from a real keystream (ChaCha20 from your password), so it is a genuine stream cipher wearing a multilingual skin. The output mixes <b>Latin, Greek, Cyrillic, Armenian, Georgian and Hiragana</b>. <b>The scripts add no security</b> — an attacker maps them back to numbers for free; the strength is entirely the keystream. Lossless for any text, emoji included.</div>
+
+    <div class="lkstep"><span class="lknum">1</span> Encrypt to polyscript</div>
+    <textarea id="psSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Text to render across six alphabets…"></textarea>
+    <div class="sdf" style="margin-top:8px">
+      <input id="psPw" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
+      <button id="psGen" class="cbtn" type="button" title="Generate a strong random password">🎲 strong</button>
+      <button id="psShow" class="cbtn" type="button">👁</button>
+      <button id="psEnc" class="cbtn" type="button">🈯 Encrypt</button>
+      <button id="psCopy" class="cbtn" type="button">⧉ Copy</button>
+    </div>
+    <textarea id="psOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="POLY1:…  a jumble of six scripts appears here. Paste it into CRYPTANALYSIS.BRAIN and it reads as structureless — because underneath it is a real cipher."></textarea>
+
+    <div class="lkstep" style="margin-top:14px"><span class="lknum">2</span> Decrypt</div>
+    <textarea id="psBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a POLY1:… blob here…"></textarea>
+    <div class="sdf" style="margin-top:8px">
+      <input id="psPw2" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
+      <button id="psShow2" class="cbtn" type="button">👁</button>
+      <button id="psDec" class="cbtn" type="button">🔓 Decrypt</button>
+    </div>
+    <div id="psPlain" class="lkplain"></div>
+
+    <div class="danger-note">
+      <b>Honest about what this is.</b> A stream cipher (ChaCha20, key stretched from your password by PBKDF2) whose ciphertext is <em>rendered</em> across six scripts instead of base64. The multilingual look is a lossless skin and adds <b>zero</b> cryptographic strength — swapping alphabets is a representation an attacker undoes for nothing, and stacked shifts collapse into one. It is authenticated (encrypt-then-MAC, HMAC-SHA-256), so a wrong password or any altered symbol is <b>rejected cleanly</b> rather than returning garbage. All the security is the keystream, so a strong password is everything. A <em>keyless</em> multi-alphabet shift — the original idea on its own — is exactly what the CRYPTANALYSIS.BRAIN below cracks. Runs entirely in this tab.
+    </div>
+  </div>
+
   <div class="term panel" id="seedPanel">
     <canvas id="seedRain" aria-hidden="true"></canvas>
     <div class="ptop"><div class="ptitle">> SEED.EXTRACTOR</div><div class="pmeta"><span class="net" id="netState"><i></i><span>checking…</span></span></div></div>
@@ -2918,6 +2947,85 @@
       logLine('locker :: SAVED .txt');}catch(e){logLine('locker :: SAVE UNSUPPORTED','a');}
   }
 
+  /* ---------- POLYSCRIPT: a keystream shift rendered across six alphabets ----------
+     Honest framing: this is ChaCha20 (key from your password via PBKDF2) with the
+     ciphertext RENDERED in a 256-symbol multi-script alphabet instead of base64.
+     The scripts are a lossless skin worth zero security bits; the keystream is
+     the whole of the strength. A keyless multi-alphabet shift -- the bare idea --
+     is a Vigenère the cryptanalysis brain breaks. */
+  var PS_A=(function(){
+    var ranges=[[0x41,0x5A],[0x61,0x7A],[0x410,0x44F],[0x3B1,0x3C9],[0x531,0x556],[0x10D0,0x10FA],[0x3041,0x309F]];
+    var A=[],i,lo,hi,c;
+    for(i=0;i<ranges.length&&A.length<256;i++){lo=ranges[i][0];hi=ranges[i][1];
+      for(c=lo;c<=hi&&A.length<256;c++)A.push(String.fromCharCode(c));}
+    return A;
+  })();
+  var PS_REV={};PS_A.forEach(function(s,i){PS_REV[s]=i;});
+  function psBits(pw,salt,iters,len){
+    return crypto.subtle.importKey('raw',new TextEncoder().encode(pw),{name:'PBKDF2'},false,['deriveBits'])
+      .then(function(k){return crypto.subtle.deriveBits({name:'PBKDF2',salt:salt,iterations:iters,hash:'SHA-256'},k,len*8);})
+      .then(function(bits){return new Uint8Array(bits);});
+  }
+  function psEncrypt(pw,text){
+    // encrypt-then-MAC: ChaCha20 for confidentiality, HMAC-SHA-256 for integrity,
+    // with independent keys from a single 64-byte PBKDF2 output
+    var salt=new Uint8Array(16);crypto.getRandomValues(salt);
+    var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
+    return psBits(pw,salt,150000,64).then(function(kk){
+      var key=kk.slice(0,32),mk=kk.slice(32);
+      var pt=new TextEncoder().encode(text);
+      var ks=chacha20(key,nonce,1,new Uint8Array(pt.length));
+      var bidx=new Uint8Array(pt.length),i;for(i=0;i<pt.length;i++)bidx[i]=(pt[i]+ks[i])&255;
+      var mac=hmac256(mk,bidx).slice(0,16);
+      var body='';for(i=0;i<bidx.length;i++)body+=PS_A[bidx[i]];
+      var hdr=toB64(cat([salt,nonce,mac]));
+      kk.fill(0);key.fill(0);mk.fill(0);
+      return 'POLY1:'+hdr+':'+body;
+    });
+  }
+  function psDecrypt(pw,blob){
+    var m=String(blob).trim().match(/^POLY1:([A-Za-z0-9\-_=]+):([\s\S]*)$/);
+    if(!m)return Promise.reject(new Error('not a POLY1 blob'));
+    var raw=fromB64(m[1]);
+    if(raw.length<44)return Promise.reject(new Error('truncated header'));
+    var salt=raw.slice(0,16),nonce=raw.slice(16,28),mac=raw.slice(28,44);
+    var body=Array.from(m[2]),bidx=new Uint8Array(body.length),i,idx;
+    for(i=0;i<body.length;i++){idx=PS_REV[body[i]];if(idx===undefined)return Promise.reject(new Error('symbol outside alphabet'));bidx[i]=idx;}
+    return psBits(pw,salt,150000,64).then(function(kk){
+      var key=kk.slice(0,32),mk=kk.slice(32);
+      var chk=hmac256(mk,bidx),ok=true,j;for(j=0;j<16;j++)if(chk[j]!==mac[j])ok=false;
+      if(!ok){kk.fill(0);throw new Error('auth failed');}
+      var ks=chacha20(key,nonce,1,new Uint8Array(body.length)),out=new Uint8Array(body.length);
+      for(j=0;j<body.length;j++)out[j]=(bidx[j]-ks[j])&255;
+      kk.fill(0);key.fill(0);mk.fill(0);
+      return new TextDecoder().decode(out);
+    });
+  }
+  function psDoEnc(){
+    var t=document.getElementById('psSecret').value,pw=document.getElementById('psPw').value;
+    if(!t){logLine('polyscript :: NOTHING TO ENCRYPT','a');return;}
+    if(!pw){logLine('polyscript :: SET A PASSWORD','a');document.getElementById('psPw').focus();return;}
+    document.getElementById('psEnc').disabled=true;
+    psEncrypt(lkNormPw(pw),t).then(function(b){
+      document.getElementById('psOut').value=b;document.getElementById('psEnc').disabled=false;
+      logLine('polyscript :: RENDERED '+t.length+' chars across six scripts');
+    }).catch(function(){document.getElementById('psEnc').disabled=false;logLine('polyscript :: ENCRYPT FAILED','a');});
+  }
+  function psDoDec(){
+    var b=document.getElementById('psBlob').value.trim(),pw=document.getElementById('psPw2').value;
+    var out=document.getElementById('psPlain');
+    if(!b){out.innerHTML='<div class="bad">Paste a POLY1: blob first.</div>';return;}
+    if(!pw){out.innerHTML='<div class="bad">Enter the password.</div>';return;}
+    document.getElementById('psDec').disabled=true;
+    psDecrypt(lkNormPw(pw),b).then(function(pt){
+      out.innerHTML='<div class="ok">'+lkEsc(pt)+'</div>';document.getElementById('psDec').disabled=false;
+      logLine('polyscript :: DECRYPTED');
+    }).catch(function(){
+      out.innerHTML='<div class="bad">Could not decrypt — wrong password, altered text, or not a POLY1 blob.</div>';
+      document.getElementById('psDec').disabled=false;logLine('polyscript :: DECRYPT FAILED','a');
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════════════════
      KEY.RECOVERY — a real dictionary/brute-force attacker.
 
@@ -4057,6 +4165,16 @@
         var v=document.getElementById('lkOut').value;if(v&&navigator.clipboard)navigator.clipboard.writeText(v).then(function(){logLine('locker :: COPIED');});});
       document.getElementById('lkSave').addEventListener('click',lkSaveTxt);
       lkStrengthUpdate();
+    })();
+    (function(){
+      var pw=document.getElementById('psPw'),pw2=document.getElementById('psPw2');
+      document.getElementById('psGen').addEventListener('click',function(){pw.value=lkGenPw();pw.type='text';});
+      document.getElementById('psShow').addEventListener('click',function(){pw.type=pw.type==='password'?'text':'password';});
+      document.getElementById('psShow2').addEventListener('click',function(){pw2.type=pw2.type==='password'?'text':'password';});
+      document.getElementById('psEnc').addEventListener('click',psDoEnc);
+      document.getElementById('psDec').addEventListener('click',psDoDec);
+      document.getElementById('psCopy').addEventListener('click',function(){
+        var v=document.getElementById('psOut').value;if(v&&navigator.clipboard)navigator.clipboard.writeText(v).then(function(){logLine('polyscript :: COPIED');});});
     })();
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
