@@ -351,7 +351,7 @@
 
   <div class="term panel" id="psPanel">
     <div class="ptop"><div class="ptitle">> POLYSCRIPT</div><div class="pmeta">a shift cipher rendered across six alphabets</div></div>
-    <div class="hint" style="margin-top:2px">Your idea, made real and honest. Every byte is matched to a symbol and <b>shifted</b> — but the shift comes from a real keystream (ChaCha20 from your password), so it is a genuine stream cipher wearing a multilingual skin. The output mixes <b>Latin, Greek, Cyrillic, Armenian, Georgian and Hiragana</b>. <b>The scripts add no security</b> — an attacker maps them back to numbers for free; the strength is entirely the keystream. Lossless for any text, emoji included.</div>
+    <div class="hint" style="margin-top:2px">Your idea, made real and honest. Every byte is matched to a symbol and <b>shifted</b> — but the shift comes from a real keystream (ChaCha20 from your password), so it is a genuine stream cipher wearing a multilingual skin. The output mixes <b>Runic, Cherokee, Greek, Cyrillic, Armenian, Georgian, Katakana and Hiragana</b> — every byte a different world. <b>The scripts add no security</b> — an attacker maps them back to numbers for free; the strength is entirely the keystream. Lossless for any text, emoji included.</div>
 
     <div class="lkstep"><span class="lknum">1</span> Encrypt to polyscript</div>
     <textarea id="psSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Text to render across six alphabets…"></textarea>
@@ -2954,10 +2954,15 @@
      the whole of the strength. A keyless multi-alphabet shift -- the bare idea --
      is a Vigenère the cryptanalysis brain breaks. */
   var PS_A=(function(){
-    var ranges=[[0x41,0x5A],[0x61,0x7A],[0x410,0x44F],[0x3B1,0x3C9],[0x531,0x556],[0x10D0,0x10FA],[0x3041,0x309F]];
-    var A=[],i,lo,hi,c;
-    for(i=0;i<ranges.length&&A.length<256;i++){lo=ranges[i][0];hi=ranges[i][1];
-      for(c=lo;c<=hi&&A.length<256;c++)A.push(String.fromCharCode(c));}
+    // eight scripts, round-robined so every position could be any of them: Runic,
+    // Cherokee, Greek, Cyrillic, Armenian, Georgian, Katakana, Hiragana
+    var ranges=[[0x16A0,0x16EA],[0x13A0,0x13F4],[0x3B1,0x3C9],[0x410,0x44F],
+                [0x531,0x556],[0x10D0,0x10FA],[0x30A1,0x30FA],[0x3041,0x3096]];
+    var A=[],seen={},k=0,added=true,r,c;
+    while(A.length<256&&added){added=false;
+      for(r=0;r<ranges.length&&A.length<256;r++){c=ranges[r][0]+k;
+        if(c<=ranges[r][1]){added=true;if(!seen[c]){seen[c]=1;A.push(String.fromCharCode(c));}}}
+      k++;}
     return A;
   })();
   var PS_REV={};PS_A.forEach(function(s,i){PS_REV[s]=i;});
