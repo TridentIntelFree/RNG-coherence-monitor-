@@ -2700,6 +2700,89 @@
   function cnLetters(t){return t.toLowerCase().replace(/[^a-z]/g,'');}
 
   // ---------- a common-word oracle, so short shifts resolve to real words ----------
+  var CN_WL=(
+    "a able about above across after again against age ago agree air all allow almost alone along already also "+
+    "although always am among amount an ancient and anger angle angry animal another answer any anyone anything "+
+    "appear apple are area argue arm around arrange arrive art as ask asked asleep at atom attack attempt "+
+    "attention aunt away baby back bad bag ball band bank base basket bat bath battle be beach bear beat "+
+    "beautiful beauty became because become bed been before began begin behind being believe bell belong below "+
+    "beside best better between beyond big bird birth bit bite black blank blind block blood blow blue board boat "+
+    "body bone book born borrow both bottle bottom bought box boy boys brain branch brave bread break breakfast "+
+    "breath bridge bright bring broad broke brother brought brown brush build building built burn burst bury "+
+    "business busy but butter button buy by cage call called calm came camp can cannot cap capital captain car "+
+    "card care careful carry case castle cat catch cattle caught cause cave cease cell cent center century "+
+    "certain chain chair chance change chapter character charge chart chase cheap check cheek cheer cheese chest "+
+    "chief child children choice choose church circle city claim class clay clean clear clever climb clock close "+
+    "cloth clothe clothes cloud coast coat cold collect college colony color column come comfort common company "+
+    "compare complete condition consider consonant contain continent continue control cook cool copy corn corner "+
+    "correct cost cottage cotton could count country couple courage course court cousin cover cow crack crash "+
+    "cream crease create creature cried crop crops cross crowd crown cruel cry cup cure curl current curtain "+
+    "curve custom cut daily damage dance danger dark daughter dawn day days dead deal dear death decide decimal "+
+    "decision deck deep deer defeat degree delight deliver depend describe desert design desire desk destroy "+
+    "detail determine develop dictionary did die difference different difficult dig dinner direct direction dirt "+
+    "dirty discover distance distant divide do doctor does dog dollar done dont door double doubt down dozen draw "+
+    "drawn dream dress drink drive drop drove drown drum dry duck during dust duty each eager ear early earn "+
+    "earth ease east easy eat edge effect effort egg eight either electric element elephant else empty end enemy "+
+    "energy engine enjoy enough enter equal escape even evening event ever every everyone everything exact "+
+    "example except exchange excite exercise expect experience experiment explain express extra eye eyes face "+
+    "fact factory fail fair fall false family famous far farm fashion fast fat father fault favor fear feast "+
+    "feather feed feel feet fell fellow felt fence fever few field fierce fight figure fill final find fine "+
+    "finger finish fire firm first fish fit fix flag flame flash flat flew float floor flow flower fly fold "+
+    "follow food fool foot football for force forest forever forget forgive form former forth fortune forward "+
+    "found fountain four fraction frame free fresh friend frighten from front fruit full fun fund funny fur "+
+    "further future gain game garden gas gate gather gave gay general gentle get giant gift girl give glad glass "+
+    "go goat god going gold gone good got govern grain grand grass grave gray great green grew grip ground group "+
+    "grow guard guess guest guide gun had hair half hall hand handle hang happen happy harbor hard harm harvest "+
+    "has haste hat hate have he head health heap hear heard heart heat heaven heavy held hell hello help hen her "+
+    "here hero herself hide high hill him himself his history hit hold hole holiday hollow holy home honest honor "+
+    "hope horse hospital hot hotel hour house how however huge human hundred hung hunger hunt hurry hurt husband "+
+    "i ice idea if imagine important in inch include increase indeed indicate industry inform insect inside "+
+    "instead instrument interest into invent iron is island it its itself job join joke journey joy judge juice "+
+    "jump just keep kept key kick kill kind king kiss kitchen knee knew knife knock know knowledge labor lack "+
+    "ladder lady laid lake lamp land language large last late laugh law lay lazy lead leader leaf learn least "+
+    "leather leave led left leg lend length less lesson let letter level library lie life lift light like line "+
+    "lion lip liquid list listen little live load loaf locate lone lonely long look looked loose lord lose loss "+
+    "lost lot loud love low lower luck lunch machine mad made magic mail main major make man manner many map "+
+    "march mark market marry master match material matter may me meal mean means meant measure meat medicine meet "+
+    "melody melt member memory men mention mercy merry message metal method middle might mile milk million mind "+
+    "mine minute miss mistake mix model modern molecule moment money monkey month moon moral more morning most "+
+    "mother mount mountain mouse mouth move much multiply music must my myself nail name narrow nation native "+
+    "natural nature near necessary neck need needle neighbor neither nest net never new news next nice night nine "+
+    "no noble nobody nod noise none noon north nose not note nothing notice noun now number numerous nurse obey "+
+    "object observe ocean of off offer office often oh oil old on once one only open operate opinion opposite or "+
+    "order ordinary organ other others ought our ourselves out outside over own page pain paint pair palace pale "+
+    "paper paragraph parent park part particular parts party pass passage past path patient pattern pause pay "+
+    "peace pen people perfect perhaps period person phrase pick picture piece pig pile pin pink pipe place plain "+
+    "plan plane planet plant plants plate play pleasant please pleasure plenty plural pocket poem point poison "+
+    "pole police polite pond poor position possible post pound pour power practice praise pray prepare present "+
+    "press pretty prevent price pride prince print prison private prize probable problem process produce promise "+
+    "proper property protect proud prove provide public pull pupil pure purple purpose push put quality quart "+
+    "quarter queen question quick quiet quite race radio rail rain raise ran rang rank rapid rare rate rather "+
+    "reach read ready real realize reason receive record red refuse region remain remember remind remove repeat "+
+    "reply report represent require rest result return rich ride right ring rise river road rock role roll roof "+
+    "room root rope rose rough round row rub rule run rush sad safe said sail salt same sand sat save saw say "+
+    "scale scene school science score sea search season seat second secret section see seed seek seem seems seen "+
+    "seize select sell send sense sent sentence separate serious serve service set settle seven several shade "+
+    "shadow shake shall shame shape share sharp she sheep sheet shell shine ship shirt shoe shoot shop shore "+
+    "short should shoulder shout show shut sick side sight sign silence silent silk silver simple since sing "+
+    "single sink sister sit situation size skill skin sky sleep slid slow small smell smile smoke snow so soft "+
+    "soil soldier solid solve some someone something sometimes son song soon sorry sort soul sound soup south "+
+    "space speak special speed spell spend spirit spoke spot spread spring square stage stair stand star start "+
+    "state station stay stead steal steam step stick still stone stood stop store storm story straight strange "+
+    "stream street strength stretch strike string strong student study subject subtract success such sudden "+
+    "suffer sugar suggest suit summer sun supper supply suppose sure surface surprise sweet swim sword syllable "+
+    "symbol table tail take tale talk tall taste teach team tear teeth tell temper temperature ten tender term "+
+    "terrible test than thank that the their them themselves then there these they thick thin thing things think "+
+    "third this those though thought thousand thread three throat through throw thumb thus tie tight time times "+
+    "tiny tip tire title to today together told tomorrow tone tongue tonight too took tool tooth top touch toward "+
+    "tower town trade train trap travel treat tree triangle trip trouble truck true trust truth try tube turn "+
+    "twelve twenty twice two type ugly uncle under understand until up upon us use used useful usual valley value "+
+    "various vary very view village visit voice wait wake walk wall want war warm was wash waste watch water wave "+
+    "way we weak wealth wear weather week weigh weight welcome well went were west wet what wheat wheel when "+
+    "where whether which while white who whole whom whose why wide wife wild will win wind window wine wing "+
+    "winter wire wise wish with within without woman women wonder wont wood word words work world worry worse "+
+    "worth would wound write written wrong wrote yard year years yellow yes yesterday yet you young your yourself "+
+    "youth ").trim().split(/\s+/);
   var CN_WORDS=null;
   function cnWordSet(){
     if(CN_WORDS)return CN_WORDS;
@@ -2712,6 +2795,7 @@
       'midnight attack dawn meet is are was were yes no help love water fire earth wind gold king queen').split(' ');
     core.forEach(function(w){if(w)CN_WORDS[w]=1;});
     var c=CN_CORPUS.split(/[^a-z]+/),i;for(i=0;i<c.length;i++)if(c[i].length>=2)CN_WORDS[c[i]]=1;
+    for(i=0;i<CN_WL.length;i++)CN_WORDS[CN_WL[i]]=1;
     return CN_WORDS;
   }
   function cnWordHits(text){
@@ -2851,6 +2935,51 @@
   }
   function cnBytesToText(b){var s='',i;for(i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return s;}
 
+  // ---------- word-pattern substitution (cracks SHORT cryptograms with spaces) ----------
+  // Each word has a letter pattern (hello -> abccd). Match cipher words to dictionary
+  // words of the same pattern, backtrack for a consistent letter map, and keep the
+  // decode that turns the most words into real English. Solves short cryptograms the
+  // annealing solver declines -- the method newspaper solvers use.
+  var CN_PIDX=null;
+  function cnPat(w){var m={},p='',n=0,i,c;for(i=0;i<w.length;i++){c=w[i];if(!(c in m))m[c]=n++;p+=String.fromCharCode(97+m[c]);}return p;}
+  function cnPatIndex(){
+    if(CN_PIDX)return CN_PIDX;
+    cnWordSet();CN_PIDX={};var i,k;
+    for(i=0;i<CN_WL.length;i++){k=cnPat(CN_WL[i]);(CN_PIDX[k]=CN_PIDX[k]||[]).push(CN_WL[i]);}
+    return CN_PIDX;
+  }
+  function cnPatternSubst(raw){
+    var idxTbl=cnPatIndex(),set=cnWordSet();
+    var cw=raw.toLowerCase().split(/[^a-z]+/).filter(function(x){return x.length;});
+    if(cw.length<3)return null;
+    var cand=cw.map(function(w){return (idxTbl[cnPat(w)]||[]).filter(function(x){return x.length===w.length;});});
+    var order=[];for(var i=0;i<cw.length;i++)if(cand[i].length>0)order.push(i);
+    if(!order.length)return null;
+    order.sort(function(a,b){return cand[a].length-cand[b].length;});
+    var best=null,steps=0,t0=Date.now();
+    function ext(map,a,b){var m={},rev={},k,i,c,p;for(k in map){m[k]=map[k];rev[map[k]]=k;}
+      for(i=0;i<a.length;i++){c=a[i];p=b[i];if(c in m){if(m[c]!==p)return null;}else{if(p in rev&&rev[p]!==c)return null;m[c]=p;rev[p]=c;}}return m;}
+    function score(map){var out='',ch,l,i,toks,cover=0,q=0,words=0;
+      for(i=0;i<raw.length;i++){ch=raw[i];l=ch.toLowerCase();if(l>='a'&&l<='z'){if(map[l]){out+=map[l];}else{out+='?';q++;}}else out+=ch;}
+      toks=out.toLowerCase().split(/[^a-z]+/);
+      for(i=0;i<toks.length;i++){if(toks[i].length>=2&&set[toks[i]]){cover+=toks[i].length;words++;}
+        else if(toks[i].length===1&&(toks[i]==='a'||toks[i]==='i')){cover+=1;words++;}}
+      return {out:out,cover:cover,q:q,words:words,t:cnScore(out.replace(/[^a-zA-Z]/g,''))};}
+    function better(a,b){if(!b)return true;if(a.cover!==b.cover)return a.cover>b.cover;if(a.q!==b.q)return a.q<b.q;return a.t>b.t;}
+    function bt(pos,map){
+      if(steps++>800000||Date.now()-t0>1200)return;
+      if(pos===order.length){var s=score(map);if(better(s,best))best=s;return;}
+      var wi=order[pos],any=false,ci,nm;
+      for(ci=0;ci<cand[wi].length;ci++){nm=ext(map,cw[wi],cand[wi][ci]);if(nm){any=true;bt(pos+1,nm);}}
+      if(!any)bt(pos+1,map);
+    }
+    bt(0,{});
+    if(!best)return null;
+    var totWords=cw.length;
+    return {name:'Substitution (word-pattern)',pt:best.out,perChar:best.t,words:best.words,
+      note:best.words+' of '+totWords+' words matched'+(best.q?' · '+best.q+' letters unsolved (?)':'')};
+  }
+
   // ---------- Morse ----------
   var CN_MORSE={".-":"A","-...":"B","-.-.":"C","-..":"D",".":"E","..-.":"F","--.":"G","....":"H","..":"I",".---":"J","-.-":"K",".-..":"L","--":"M","-.":"N","---":"O",".--.":"P","--.-":"Q",".-.":"R","...":"S","-":"T","..-":"U","...-":"V",".--":"W","-..-":"X","-.--":"Y","--..":"Z","-----":"0",".----":"1","..---":"2","...--":"3","....-":"4",".....":"5","-....":"6","--...":"7","---..":"8","----.":"9"};
   function cnMorse(raw){
@@ -2968,6 +3097,11 @@
         var rail=cnRail(L);if(rail)results.push(rail);
         var colt=cnColumnar(L);if(colt)results.push(colt);
       }
+      // word-pattern substitution: only when a simpler cipher has NOT already cracked
+      // it (keeps the UI snappy on shifts/Vigenere; this search can take ~1s)
+      var wc=(P.text.trim().match(/[a-z]+/gi)||[]).length,solved=false;
+      results.forEach(function(R){if(R&&R.words&&R.words>=wc*0.7)solved=true;});
+      if(!solved&&/\s/.test(P.text.trim())&&L.length<=160){var wps=cnPatternSubst(P.text);if(wps)results.push(wps);}
       // XOR only when there is essentially no natural-language text -- real bytes
       if(L.length<bytes.length*0.3){
         results.push(cnXorSingle(bytes));var xr=cnXorRepeat(bytes);if(xr)results.push(xr);
