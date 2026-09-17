@@ -3098,6 +3098,62 @@
   function pgAppend(c){PG_OUT+=c;pgShow();}
   function pgShow(){var o=document.getElementById('pgOut');if(o)o.textContent=PG_OUT.toLowerCase()||'—';}
 
+  // ---------- keyboard shift (QWERTY) ----------
+  var CN_KB="qwertyuiopasdfghjklzxcvbnm",CN_KBI=null;
+  function cnKeyboard(raw){
+    if(!CN_KBI){CN_KBI={};for(var q=0;q<26;q++)CN_KBI[CN_KB[q]]=q;}
+    var best=null,n,i,o,c,lo,p,w;
+    for(n=1;n<26;n++){o='';
+      for(i=0;i<raw.length;i++){c=raw[i];lo=c.toLowerCase();p=CN_KBI[lo];
+        if(p===undefined)o+=c;else{var r=CN_KB[(p+n)%26];o+=(c===lo?r:r.toUpperCase());}}
+      w=cnWordHits(o);if(!best||w.ratio>best.ratio)best={o:o,ratio:w.ratio,hits:w.hits,n:n};}
+    if(!best||best.hits<1)return null;
+    return {name:'Keyboard shift (QWERTY)',pt:best.o,perChar:cnScore(cnLetters(best.o)),words:best.hits,note:'shifted '+best.n+' along the keyboard'};
+  }
+  // ---------- Playfair (dictionary-keyword attack) ----------
+  function cnPfSq(key){key=(key+'ABCDEFGHIKLMNOPQRSTUVWXYZ').toUpperCase().replace(/J/g,'I').replace(/[^A-Z]/g,'');
+    var s='',seen={},i;for(i=0;i<key.length;i++)if(!seen[key[i]]){seen[key[i]]=1;s+=key[i];}return s;}
+  function cnPfDec(ct,key){var S=cnPfSq(key),pos={},i;for(i=0;i<25;i++)pos[S[i]]={r:(i/5)|0,c:i%5};
+    var o='';for(i=0;i+1<ct.length;i+=2){var a=pos[ct[i]],b=pos[ct[i+1]];if(!a||!b){o+='??';continue;}
+      if(a.r===b.r)o+=S[a.r*5+(a.c+4)%5]+S[b.r*5+(b.c+4)%5];
+      else if(a.c===b.c)o+=S[((a.r+4)%5)*5+a.c]+S[((b.r+4)%5)*5+b.c];
+      else o+=S[a.r*5+b.c]+S[b.r*5+a.c];}return o;}
+  function cnCoverage(t){                                // greedy non-overlapping real-word coverage
+    t=t.toLowerCase().replace(/[^a-z]/g,'');var set=cnWordSet(),i=0,l,cov=0,words=0,m;
+    while(i<t.length){m=0;for(l=Math.min(12,t.length-i);l>=3;l--){if(set[t.substr(i,l)]){m=l;break;}}
+      if(m){cov+=m;words++;i+=m;}else i++;}
+    return {ratio:t.length?cov/t.length:0,words:words};
+  }
+  function cnPlayfair(letters){
+    var t=letters.toUpperCase().replace(/J/g,'I');
+    if(t.length<20||t.length%2)return null;
+    var i,dd=false;for(i=0;i<t.length;i+=2)if(t[i]===t[i+1]){dd=true;break;}
+    if(dd)return null;                                   // Playfair never repeats a letter within a digraph
+    var best=null,w,pt,cov;
+    for(w=0;w<CN_WL.length;w++){pt=cnPfDec(t,CN_WL[w]);cov=cnCoverage(pt);
+      if(!best||cov.ratio>best.cov.ratio)best={k:CN_WL[w],pt:pt,cov:cov};}
+    // strict: most of the plaintext must be real English words, or it is a false hit
+    // coverage AND a trigram English-gate: chance short-word matches in garbage
+    // clear coverage alone, but not the trigram bar that real prose does
+    if(!best||best.cov.ratio<0.6||best.cov.words<3||cnScore(best.pt.toLowerCase())<-10.2)return null;
+    return {name:'Playfair (key: '+best.k+')',pt:best.pt.toLowerCase(),perChar:cnScore(best.pt.toLowerCase()),words:best.cov.words,note:'dictionary-keyword attack · digraph cipher'};
+  }
+
+  // ---------- cipher-type classifier ----------
+  function cnClassify(raw,letters,bytes){
+    var t=raw.trim();
+    if(/^[.\-\/|\s]+$/.test(t)&&/[.\-]/.test(t))return 'Morse';
+    if(/^[01\s]+$/.test(t))return 'binary';
+    if(/^[0-9\s\/,.\-|]+$/.test(t)&&/[0-9]/.test(t))return 'a number cipher (A1Z26 / ASCII / Polybius)';
+    if(/^[A-Za-z0-9+/=_\-]+$/.test(t)&&!/\s/.test(t)&&t.replace(/=/g,'').length>=12&&/[0-9+/=]/.test(t))return 'base64 / an encoded blob';
+    if(!letters||letters.length<16)return 'too short to classify confidently — trying everything';
+    var ic=cnIC(new TextEncoder().encode(letters));
+    // index of coincidence separates the families; be honest about the overlap
+    if(ic<0.05)return 'polyalphabetic — Vigenère, or a keystream (if it will not fall)';
+    if(ic<0.062)return 'possibly polyalphabetic or a digraph cipher (Playfair) — flattened frequencies';
+    return 'monoalphabetic — a shift, substitution, or transposition (English-like letter frequencies)';
+  }
+
   // ---------- recursive auto-unwrap: peel layered encodings until English ----------
   function cnRev(s){return s.split('').reverse().join('');}
   function cnAtb(s){return s.replace(/[a-z]/gi,function(c){var lo=c===c.toLowerCase();var b=c.toUpperCase().charCodeAt(0)-65;if(b<0||b>25)return c;var r=String.fromCharCode(90-b);return lo?r.toLowerCase():r;});}
@@ -3200,12 +3256,18 @@
     results.forEach(function(R){var pen=0;
       if(/substitution/i.test(R.name))pen=Math.max(0,(140-R.pt.length)/140)*2.2;
       else if(/Vigen/i.test(R.name))pen=0.15;
-      R.rank=R.perChar-pen+(R.words||0)*1.2;});                // real words dominate the ranking
+      // rank by greedy word COVERAGE, which works whether or not the decode has
+      // spaces -- so a correct spaceless Vigenère/substitution decode is scored
+      // fairly against a space-preserving solver that only overfit a few words
+      var cov=cnCoverage(R.pt);R.words=cov.words;R.cov=cov.ratio;
+      // trigram (English-ness) dominates; coverage breaks ties. Garbage can rack up
+      // greedy coverage with a big dictionary, but its trigram score stays low.
+      R.rank=R.perChar*2+cov.ratio*4-pen;});
     results.sort(function(a,b){return b.rank-a.rank;});
     var html='',i;
     for(i=0;i<results.length;i++){var R=results[i],conf=cnConf(R.perChar);
-      if(R.words)conf=Math.max(conf,Math.min(0.99,0.45+0.22*R.words));   // matched real words: high confidence
-      var win=i===0&&conf>0.35;
+      if(R.cov!=null)conf=Math.max(conf,Math.min(0.99,R.cov));           // coverage of real words = confidence
+      var win=i===0&&conf>0.4;
       html+='<div class="cnr'+(win?' win':'')+'">'+
         '<div class="cnh"><b>'+R.name+(win?' — best guess':'')+'</b><span>'+(conf*100).toFixed(0)+'% confidence</span></div>'+
         '<div class="cnpt">'+cnEsc(R.pt.slice(0,240))+(R.pt.length>240?'…':'')+'</div>'+
@@ -3267,6 +3329,8 @@
       if(L.length>=8){var aff=cnAffine(L);if(aff)results.push(aff);}
       var r47=cnRot47(P.text);if(r47)results.push(r47);
       var bac=cnBacon(P.text);if(bac)results.push(bac);
+      var kbd=cnKeyboard(P.text);if(kbd)results.push(kbd);
+      var pf=cnPlayfair(L);if(pf)results.push(pf);
       // XOR only when there is essentially no natural-language text -- real bytes
       if(L.length<bytes.length*0.3){
         results.push(cnXorSingle(bytes));var xr=cnXorRepeat(bytes);if(xr)results.push(xr);
@@ -3280,8 +3344,8 @@
     if(uw.chain.length>=2&&uw.score>0.5)results.push({name:'Layered decode',pt:uw.out,
       perChar:cnScore(cnLetters(uw.out)),words:cnWordHits(uw.out).hits,note:'peeled: '+uw.chain.join(' \u2192 ')});
     results=results.filter(Boolean);
-    gate.verdict='Structure detected — the gate is open. Novelty is below the random baseline, '+
-      'so windows recur and there is something to exploit. Running the classical solvers.';
+    var likely=cnClassify(raw,cnLetters(P.text||''),bytes);
+    gate.verdict='<b>Likely: '+likely+'.</b> Structure detected — running every solver and ranking by English-ness below.';
     cnRender(gate,results);
     var top=results.slice().sort(function(a,b){return b.perChar-a.perChar;})[0];
     logLine('cryptanalysis :: '+results.length+' methods · best = '+(top?top.name:'none')+
