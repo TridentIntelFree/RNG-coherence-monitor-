@@ -155,6 +155,10 @@
   .meter.full i{background:linear-gradient(90deg,var(--grn),var(--bright))}
   .sdout{margin-top:10px;border:1px solid var(--edge);border-radius:5px;background:rgba(0,0,0,.55);padding:10px 11px}
   .lkstep{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:12px;letter-spacing:.05em;color:var(--bright)}
+  .pstabs{display:flex;gap:6px;margin:11px 0 10px}
+  .pstab{flex:1;padding:9px;border:1px solid var(--edge);border-radius:5px;background:rgba(0,0,0,.4);color:var(--dim);font-family:var(--mono);font-size:12px;cursor:pointer;letter-spacing:.04em}
+  .pstab.on{background:rgba(0,255,102,.1);border-color:var(--grndim);color:var(--bright)}
+  #psPlain:empty::before{content:"— press Decrypt —";color:var(--faint);font-size:11px}
   .lknum{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:var(--grndim);color:#000;font-size:11px;font-weight:700;flex:0 0 auto}
   #lkStr{display:block;height:100%;width:0;background:var(--red);transition:width .2s,background .2s}
   .lkplain{margin-top:9px;font-size:12.5px;line-height:1.55;word-break:break-word;white-space:pre-wrap}
@@ -358,28 +362,41 @@
 
   <div class="term panel" id="psPanel">
     <div class="ptop"><div class="ptitle">> POLYSCRIPT</div><div class="pmeta">a shift cipher rendered across six alphabets</div></div>
-    <div class="hint" style="margin-top:2px">Your idea, made real and honest. Every byte is matched to a symbol and <b>shifted</b> by a real keystream (ChaCha20 from your password) — a genuine stream cipher wearing a multilingual skin. And the alphabet itself is <b>interwoven at random from your key</b>: each message draws 256 symbols from a pool of ten scripts — <b>Runic, Cherokee, Greek, Cyrillic, Armenian, Georgian, Katakana, Hiragana, Thai and Hangul</b> — shuffled into a fresh order nobody else derives. <b>The scripts and the shuffle add no security</b> — an attacker maps glyphs back to numbers for free; the strength is entirely the keystream. Lossless for any text, emoji included.</div>
+    <div class="hint" style="margin-top:2px">Encrypt text into a jumble of ten world scripts. It is a real stream cipher (ChaCha20 from your password); the exotic alphabet is a lossless skin that adds no security — your password is the whole of it.</div>
 
-    <div class="lkstep"><span class="lknum">1</span> Encrypt to polyscript</div>
-    <textarea id="psSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Text to render across six alphabets…"></textarea>
-    <div class="sdf" style="margin-top:8px">
-      <input id="psPw" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
-      <button id="psGen" class="cbtn" type="button" title="Generate a strong random password">🎲 strong</button>
-      <button id="psShow" class="cbtn" type="button">👁</button>
-      <button id="psEnc" class="cbtn" type="button">🈯 Encrypt</button>
-      <button id="psCopy" class="cbtn" type="button">⧉ Copy</button>
+    <div class="pstabs">
+      <button id="psTabEnc" class="pstab on" type="button">🔒 Encrypt</button>
+      <button id="psTabDec" class="pstab" type="button">🔓 Decrypt</button>
     </div>
-    <textarea id="psOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="POLY2:…  a jumble of ten scripts appears here, in an alphabet built fresh from your key. Paste it into CRYPTANALYSIS.BRAIN and it reads as structureless."></textarea>
-    <div id="psInfo" class="hint" style="margin-top:6px"></div>
 
-    <div class="lkstep" style="margin-top:14px"><span class="lknum">2</span> Decrypt</div>
-    <textarea id="psBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a POLY2:… blob here…"></textarea>
-    <div class="sdf" style="margin-top:8px">
-      <input id="psPw2" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
-      <button id="psShow2" class="cbtn" type="button">👁</button>
-      <button id="psDec" class="cbtn" type="button">🔓 Decrypt</button>
+    <div id="psEncView">
+      <label class="krlab" for="psSecret">Your message</label>
+      <textarea id="psSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Type the text you want to protect…"></textarea>
+      <label class="krlab" for="psPw" style="margin-top:9px">Password</label>
+      <div class="sdf">
+        <input id="psPw" class="sdin" type="password" placeholder="a password only you and your reader know" autocomplete="off" spellcheck="false">
+        <button id="psGen" class="cbtn" type="button" title="Generate a strong random password">🎲</button>
+        <button id="psShow" class="cbtn" type="button" title="show/hide">👁</button>
+      </div>
+      <div class="ctl"><button id="psEnc" class="cbtn" type="button">🔒 Encrypt</button></div>
+      <label class="krlab" for="psOut" style="margin-top:11px">Encrypted — copy and send this</label>
+      <textarea id="psOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="The polyscript blob appears here once you press Encrypt."></textarea>
+      <div class="ctl"><button id="psCopy" class="cbtn" type="button">⧉ Copy</button></div>
+      <div id="psInfo" class="hint" style="margin-top:6px"></div>
     </div>
-    <div id="psPlain" class="lkplain"></div>
+
+    <div id="psDecView" style="display:none">
+      <label class="krlab" for="psBlob">Paste the encrypted blob</label>
+      <textarea id="psBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a POLY2:… blob you received…"></textarea>
+      <label class="krlab" for="psPw2" style="margin-top:9px">Password</label>
+      <div class="sdf">
+        <input id="psPw2" class="sdin" type="password" placeholder="the password it was locked with" autocomplete="off" spellcheck="false">
+        <button id="psShow2" class="cbtn" type="button" title="show/hide">👁</button>
+      </div>
+      <div class="ctl"><button id="psDec" class="cbtn" type="button">🔓 Decrypt</button></div>
+      <label class="krlab" style="margin-top:11px">Recovered message</label>
+      <div id="psPlain" class="lkplain"></div>
+    </div>
 
     <div class="danger-note">
       <b>Honest about what this is.</b> A stream cipher (ChaCha20, key stretched from your password by PBKDF2) whose ciphertext is <em>rendered</em> across six scripts instead of base64. The multilingual look is a lossless skin and adds <b>zero</b> cryptographic strength — swapping alphabets is a representation an attacker undoes for nothing, and stacked shifts collapse into one. It is authenticated (encrypt-then-MAC, HMAC-SHA-256), so a wrong password or any altered symbol is <b>rejected cleanly</b> rather than returning garbage. All the security is the keystream, so a strong password is everything. A <em>keyless</em> multi-alphabet shift — the original idea on its own — is exactly what the CRYPTANALYSIS.BRAIN below cracks. Runs entirely in this tab.
@@ -4326,6 +4343,18 @@
       document.getElementById('psDec').addEventListener('click',psDoDec);
       document.getElementById('psCopy').addEventListener('click',function(){
         var v=document.getElementById('psOut').value;if(v&&navigator.clipboard)navigator.clipboard.writeText(v).then(function(){logLine('polyscript :: COPIED');});});
+      function psMode(dec){
+        document.getElementById('psEncView').style.display=dec?'none':'';
+        document.getElementById('psDecView').style.display=dec?'':'none';
+        document.getElementById('psTabEnc').classList.toggle('on',!dec);
+        document.getElementById('psTabDec').classList.toggle('on',dec);
+      }
+      document.getElementById('psTabEnc').addEventListener('click',function(){psMode(false);});
+      document.getElementById('psTabDec').addEventListener('click',function(){psMode(true);});
+      // if a POLY2 blob is pasted into the message box, offer to switch to Decrypt
+      document.getElementById('psSecret').addEventListener('input',function(){
+        if(/^\s*POLY2:/.test(this.value)){var v=this.value;this.value='';psMode(true);
+          document.getElementById('psBlob').value=v.trim();logLine('polyscript :: that is a blob \u2014 switched to Decrypt','a');}});
     })();
     document.getElementById('kryB1').addEventListener('click',function(){krySolve('K1');});
     document.getElementById('kryB2').addEventListener('click',function(){krySolve('K2');});
