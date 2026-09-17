@@ -2986,9 +2986,11 @@
   // ---------- number & binary ciphers (common in puzzle games) ----------
   function cnA1Z26(raw){
     if(!/^[0-9\s\/,.\-|]+$/.test(raw.trim())||!/[0-9]/.test(raw))return null;
+    var allnums=raw.trim().split(/[^0-9]+/).filter(function(x){return x;});
+    if(!allnums.every(function(n){var v=+n;return v>=1&&v<=26;}))return null;   // real A1Z26 only
     var words=raw.trim().split(/\s*[\/|]\s*|\s{2,}/),out=words.map(function(w){
       var nums=w.trim().split(/[^0-9]+/).filter(function(x){return x;});
-      return nums.map(function(n){var v=+n;return v>=1&&v<=26?CN_AZ[v-1]:'?';}).join('');}).join(' ').trim();
+      return nums.map(function(n){return CN_AZ[(+n)-1];}).join('');}).join(' ').trim();
     if(!/[a-z]/.test(out))return null;
     return {name:'A1Z26 (letter numbers)',pt:out,perChar:cnScore(cnLetters(out)),words:cnWordHits(out).hits,note:'1=A … 26=Z'};
   }
@@ -3032,6 +3034,43 @@
     if(!/[a-z]/.test(out))return null;
     var w=cnWordHits(out);if(w.hits<1)return null;
     return {name:'Baconian',pt:out,perChar:cnScore(out),words:w.hits,note:'5 symbols per letter'};
+  }
+
+  // ---------- recursive auto-unwrap: peel layered encodings until English ----------
+  function cnRev(s){return s.split('').reverse().join('');}
+  function cnAtb(s){return s.replace(/[a-z]/gi,function(c){var lo=c===c.toLowerCase();var b=c.toUpperCase().charCodeAt(0)-65;if(b<0||b>25)return c;var r=String.fromCharCode(90-b);return lo?r.toLowerCase():r;});}
+  function cnRotN(s,n){return s.replace(/[a-z]/gi,function(c){var lo=c===c.toLowerCase();var b=c.toLowerCase().charCodeAt(0)-97;var r=CN_AZ[(b+n)%26];return lo?r:r.toUpperCase();});}
+  function cnCaesarBest(s){var best=null,k,o,w;for(k=1;k<26;k++){o=cnRotN(s,26-k);w=cnWordHits(o).ratio;if(!best||w>best.w)best={o:o,w:w};}return best&&best.w>0.4?best.o:null;}
+  function cnB64d(s){if(!/^[A-Za-z0-9+/=_\-\s]+$/.test(s))return null;var t=s.replace(/\s/g,'');if(t.length<8||t.length%4!==0)return null;
+    try{var d=fromB64(t),o='',i;for(i=0;i<d.length;i++)o+=String.fromCharCode(d[i]);return /^[\x09\x0a\x0d\x20-\x7e]*$/.test(o)&&o.length?o:null;}catch(e){return null;}}
+  function cnHexd(s){var h=s.replace(/\s/g,'');if(!/^[0-9a-fA-F]+$/.test(h)||h.length<4||h.length%2)return null;var o='',i;for(i=0;i<h.length;i+=2)o+=String.fromCharCode(parseInt(h.substr(i,2),16));return /^[\x09\x0a\x0d\x20-\x7e]*$/.test(o)?o:null;}
+  function cnBind(s){if(!/^[01\s]+$/.test(s))return null;var b=s.replace(/[^01]/g,'');if(b.length<8||b.length%8)return null;var o='',i;for(i=0;i+8<=b.length;i+=8)o+=String.fromCharCode(parseInt(b.substr(i,8),2));return /^[\x20-\x7e]*$/.test(o)?o:null;}
+  function cnA1d(s){if(!/^[0-9\s\/,.\-|]+$/.test(s.trim())||!/[0-9]/.test(s))return null;var w=s.trim().split(/\s*[\/|]\s*|\s{2,}/).map(function(x){return x.trim().split(/[^0-9]+/).filter(function(y){return y;}).map(function(n){var v=+n;return v>=1&&v<=26?CN_AZ[v-1]:'?';}).join('');}).join(' ');return /[a-z]/.test(w)&&w.indexOf('?')<0?w:null;}
+  var CN_TR=[['reverse',cnRev],['atbash',cnAtb],['rot13',function(s){return cnRotN(s,13);}],['shift',cnCaesarBest],
+             ['base64',cnB64d],['hex',cnHexd],['binary',cnBind],['A1Z26',cnA1d]];
+  function cnUnwrap(input){
+    var seen={},best={score:-1,chain:[],out:input},nodes=0,t0=Date.now();
+    function rec(s,chain,depth){
+      if(depth>4||nodes>600||Date.now()-t0>1500||seen[s])return;seen[s]=1;nodes++;
+      var w=cnWordHits(s).ratio;
+      if(w>best.score||(w===best.score&&chain.length<best.chain.length)){best={score:w,chain:chain.slice(),out:s};}
+      if(w>0.75)return;
+      for(var i=0;i<CN_TR.length;i++){var o=null;try{o=CN_TR[i][1](s);}catch(e){o=null;}
+        if(o&&o!==s&&!seen[o])rec(o,chain.concat(CN_TR[i][0]),depth+1);}
+    }
+    rec(input,[],0);
+    return best;
+  }
+  // ---------- Polybius / tap code (pairs of 1-5) ----------
+  function cnPolybius(raw){
+    var nums=raw.trim().split(/[^1-5]+/).filter(function(x){return x.length;});
+    // also handle contiguous digit pairs like "3115" -> 31 15
+    if(nums.length===1&&/^[1-5]+$/.test(nums[0])&&nums[0].length%2===0){var p=[],i;for(i=0;i<nums[0].length;i+=2)p.push(nums[0].substr(i,2));nums=p;}
+    if(nums.length<2||!nums.every(function(n){return n.length===2;}))return null;
+    var sq='ABCDEFGHIKLMNOPQRSTUVWXYZ',out='';   // I/J share (classic 5x5)
+    for(var i=0;i<nums.length;i++){var r=+nums[i][0]-1,c=+nums[i][1]-1;if(r<0||r>4||c<0||c>4)return null;out+=sq[r*5+c];}
+    var w=cnWordHits(out);if(w.hits<1)return null;
+    return {name:'Polybius / tap code',pt:out.toLowerCase(),perChar:cnScore(out.toLowerCase()),words:w.hits,note:'5×5 square (I/J shared)'};
   }
 
   // ---------- Morse ----------
@@ -3126,6 +3165,7 @@
       var bn=cnBinary(raw);if(bn){cnRender({novelty:0,entropy:0,entRatio:0,ic:0,attack:true,verdict:'Binary detected — decoded as 8-bit ASCII.'},[bn]);logLine('cryptanalysis :: BINARY decoded');return;}}
     if(/^[0-9\s\/,.\-|]+$/.test(raw.trim())&&/[0-9]/.test(raw)){
       var nr=[];var a1=cnA1Z26(raw);if(a1)nr.push(a1);var da=cnDecAscii(raw);if(da)nr.push(da);
+      var pb=cnPolybius(raw);if(pb)nr.push(pb);
       if(nr.length){cnRender({novelty:0,entropy:0,entRatio:0,ic:0,attack:true,verdict:'Numeric cipher detected — decoded below (best guess first).'},nr);logLine('cryptanalysis :: NUMERIC decoded');return;}}
     var P=cnParse(raw),bytes=P.bytes;
     var nov=cnNovelty(bytes),H=cnEntropy(bytes),ic=cnIC(bytes);
@@ -3174,6 +3214,9 @@
       // a byte blob might still be a caesar/substitution of text mis-detected; try letters too
       var tl=cnLetters(cnBytesToText(bytes));if(tl.length>=40){var s2=cnSubst(tl);if(s2)results.push(s2);}
     }
+    var uw=cnUnwrap(raw);
+    if(uw.chain.length>=2&&uw.score>0.5)results.push({name:'Layered decode',pt:uw.out,
+      perChar:cnScore(cnLetters(uw.out)),words:cnWordHits(uw.out).hits,note:'peeled: '+uw.chain.join(' \u2192 ')});
     results=results.filter(Boolean);
     gate.verdict='Structure detected — the gate is open. Novelty is below the random baseline, '+
       'so windows recur and there is something to exploit. Running the classical solvers.';
