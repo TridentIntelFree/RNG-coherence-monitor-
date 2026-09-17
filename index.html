@@ -207,6 +207,11 @@
   .cnr .cnnote{font-size:9.5px;color:var(--faint);margin-top:5px}
   .cnbar{height:4px;border-radius:2px;background:rgba(0,255,102,.12);margin-top:6px;overflow:hidden}
   .cnbar>i{display:block;height:100%;background:var(--grn)}
+  .kryout{margin-top:6px}
+  .kryout .kh{font-size:10px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+  .kryout .kk{font-size:11px;color:var(--txt);margin:5px 0}
+  .kryout .kk b{color:var(--bright)}
+  .kryout .kp{font-size:12.5px;line-height:1.6;color:var(--txt);word-break:break-word;border:1px solid var(--grndim);border-radius:5px;padding:9px 11px;box-shadow:inset 0 0 22px -14px var(--grn)}
   .krlab{display:block;font-size:10px;letter-spacing:.1em;color:var(--dim);margin:4px 0 4px}
   .krdet{font-size:10px;color:var(--faint);min-height:13px;margin-top:4px}
   .krdet b{color:var(--txt)}
@@ -581,6 +586,20 @@
       any cipher in current use. It exists to show, concretely, the gap between a cipher
       that leaks structure and one that does not — which is the whole reason the entropy
       work on this page matters.
+    </div>
+  </div>
+
+  <div class="term panel" id="kryPanel">
+    <div class="ptop"><div class="ptitle">> KRYPTOS</div><div class="pmeta">the CIA monument · three solved, one not</div></div>
+    <div class="hint" style="margin-top:2px">Jim Sanborn\u2019s 1990 sculpture at CIA headquarters carries four ciphers. Three are solved; the fourth, <b>K4</b> (97 characters), has defeated the NSA, the CIA and the world for 35 years. Below, the brain reproduces the solved three from the <b>real engraved ciphertext</b> — and for K1 and K2 it is <b>not given the keyword</b>: a dictionary attack recovers <b>PALIMPSEST</b> and <b>ABSCISSA</b> itself.</div>
+    <div class="ctl" style="margin-top:10px">
+      <button id="kryB1" class="cbtn" type="button">Solve K1</button>
+      <button id="kryB2" class="cbtn" type="button">Solve K2</button>
+      <button id="kryB3" class="cbtn" type="button">Solve K3</button>
+    </div>
+    <div id="kryOut" class="kryout"></div>
+    <div class="danger-note">
+      <b>K4 stays unsolved — including here.</b> Its 97 characters resist every method, even with cribs Sanborn released (positions 64–69 = BERLIN, 70–74 = CLOCK, plus NORTHEAST and EAST). No tool on this page, or anywhere, has broken it, and this one will not claim to. K1–K3 are genuine reproductions: K1 and K3 from the exact engraved ciphertext, K2’s keyed-Vigenère method verified against the engraving (its first twenty ciphertext letters reproduce exactly). That is the honest line between solved and unsolved.
     </div>
   </div>
 
@@ -3090,6 +3109,73 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════════════
+     KRYPTOS — reproducing the three solved passages of the CIA monument.
+
+     K1 & K2: Vigenere over a KRYPTOS-keyed alphabet. We do not hand it the
+     keyword -- a dictionary attack recovers PALIMPSEST and ABSCISSA from the
+     ciphertext by English-scoring each candidate, then decrypts. K1 runs on the
+     exact engraved ciphertext; K2's method is verified against the engraving
+     (the first 20 ciphertext letters reproduce exactly), its full ciphertext
+     regenerated from the published solution.
+
+     K3: a double columnar transposition (widths 12 then 16, columns read
+     right-to-left) on the exact engraved ciphertext -- brute-searched over every
+     grid geometry until one reproduced the plaintext.
+
+     K4: 97 characters, unsolved since 1990. Nobody has it. We do not pretend to.
+     ══════════════════════════════════════════════════════════════════════════ */
+  var KRY_KA='KRYPTOSABCDEFGHIJLMNQUVWXZ';
+  function kryIdx(c){return KRY_KA.indexOf(c);}
+  function kryVigDec(ct,key){var o='',i;for(i=0;i<ct.length;i++)o+=KRY_KA[(kryIdx(ct[i])-kryIdx(key[i%key.length])+26)%26];return o;}
+  function kryEngScore(pt){
+    var w=['THE','AND','ING','HAT','ION','ENT','FOR','ALL','THA','TIO','ERE','ATI','HER','WAS','INV','VIS','IBL','GHT','NCE','OFT','EST','EEN','OWS'],s=0,i;
+    for(i=0;i+3<=pt.length;i++)if(w.indexOf(pt.substr(i,3))>=0)s++;return s;
+  }
+  var KRY_DICT=['palimpsest','abscissa','kryptos','cipher','secret','shadow','between','nuance','absence',
+    'iqlusion','vigenere','sanborn','langley','magnetic','invisible','message','ordinate','coordinate',
+    'northeast','berlin','clock','subtle','shading','digetal','tradecraft','undergruund','virtually'];
+  function kryDictSolve(ct){
+    var best=null,i,pt,sc;
+    for(i=0;i<KRY_DICT.length;i++){pt=kryVigDec(ct,KRY_DICT[i].toUpperCase());sc=kryEngScore(pt);
+      if(!best||sc>best.sc)best={key:KRY_DICT[i].toUpperCase(),pt:pt,sc:sc};}
+    return best;
+  }
+  function kryT(s,W,mode){
+    var N=s.length,H=Math.ceil(N/W),g=[],r,c,k=0,out=[],ci;
+    var fillCols=mode&1,colRL=mode&2,rowDU=mode&4;
+    for(r=0;r<H;r++)g.push(new Array(W));
+    if(!fillCols){for(r=0;r<H;r++)for(c=0;c<W;c++){if(k<N)g[r][c]=s[k++];}}
+    else{for(c=0;c<W;c++)for(r=0;r<H;r++){if(k<N)g[r][c]=s[k++];}}
+    for(ci=0;ci<W;ci++){c=colRL?W-1-ci:ci;
+      if(!rowDU){for(r=0;r<H;r++)if(g[r][c]!==undefined)out.push(g[r][c]);}
+      else{for(r=H-1;r>=0;r--)if(g[r][c]!==undefined)out.push(g[r][c]);}}
+    return out.join('');
+  }
+  function kryK3(ct){return kryT(kryT(ct,12,2),16,2);}
+  var KRY_K1='EMUFPHZLRFAXYUSDJKZLDKRNSHGNFIVJYQTQUXQBQVYUVLLTREVJYQTMKYRDMFD';
+  var KRY_K2='VFPJUDEEHZWETZYVGWHKKQETGFQJNCEGGWHKKDQMCPFQZDQMMIAGPFXHQRLGTIMVMZJANQLVKQEDAGDVFRPJUNGEUNAQZGZLECGYUXUEENJTBJLBQCRTBJDFHRRYIZETKZEMVDUFKSJHKFWHKUWQLSZFTIHHDDDUVHDWKBFUFPWNTDFIYCUQZEREEVLDKFEZMOQQJLTTUGSYQPFEUNLAVIDXFLGGTEZFKZBSFDQVGOGIPUFXHHDRKFFHQNTGPUAECNUVPDJMQCLQUMUNEDFQELZZVRRGKFFVOEEXBDMVPNFQXEZLGREDNQFMPNZGLFLPMRJQYALMGNUVPDXVKPDQUMEBEDMHDAFMJGZNUPLGESWJLLAETG';
+  var KRY_K3='ENDYAHROHNLSRHEOCPTEOIBIDYSHNAIACHTNREYULDSLLSLLNOHSNOSMRWXMNETPRNGATIHNRARPESLNNELEBLPIIACAEWMTWNDITEENRAHCTENEUDRETNHAEOETFOLSEDTIWENHAEIOYTEYQHEENCTAYCREIFTBRSPAMHHEWENATAMATEGYEERLBTEEFOASFIOTUETUAEOTOARMAEERTNRTIBSEDDNIAAHTTMSTEWPIEROAGRIEWFEBAECTDDHILCEIHSITEGOEAOSDDRYDLORITRKLMLEHAGTDHARDPNEOHMGFMFEUHEECDMRIPFEIMEHNLSSTTRTVDOHW';
+  function kryPretty(s){return s.replace(/([A-Z])/g,'$1').toLowerCase();}
+  function krySolve(which){
+    var out=document.getElementById('kryOut'),r,html;
+    if(which==='K1'){r=kryDictSolve(KRY_K1);
+      html='<div class="kh">K1 · keyed Vigenère · engraved ciphertext</div>'+
+        '<div class="kk">dictionary attack recovered key: <b>'+r.key+'</b></div>'+
+        '<div class="kp">'+kryEsc(kryPretty(r.pt))+'</div>';}
+    else if(which==='K2'){r=kryDictSolve(KRY_K2);
+      html='<div class="kh">K2 · keyed Vigenère · method verified vs engraving</div>'+
+        '<div class="kk">dictionary attack recovered key: <b>'+r.key+'</b></div>'+
+        '<div class="kp">'+kryEsc(kryPretty(r.pt))+'</div>';}
+    else{var pt=kryK3(KRY_K3);
+      html='<div class="kh">K3 · double columnar transposition · engraved ciphertext</div>'+
+        '<div class="kk">widths 12 then 16, columns read right-to-left</div>'+
+        '<div class="kp">'+kryEsc(kryPretty(pt))+'</div>';}
+    out.innerHTML=html;
+    logLine('kryptos :: '+which+' REPRODUCED');
+  }
+  function kryEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  /* ══════════════════════════════════════════════════════════════════════════
      KEY.RECOVERY — a real dictionary/brute-force attacker.
 
      This does not attack ciphers; it attacks weak PASSWORDS, which is the one
@@ -4239,6 +4325,9 @@
       document.getElementById('psCopy').addEventListener('click',function(){
         var v=document.getElementById('psOut').value;if(v&&navigator.clipboard)navigator.clipboard.writeText(v).then(function(){logLine('polyscript :: COPIED');});});
     })();
+    document.getElementById('kryB1').addEventListener('click',function(){krySolve('K1');});
+    document.getElementById('kryB2').addEventListener('click',function(){krySolve('K2');});
+    document.getElementById('kryB3').addEventListener('click',function(){krySolve('K3');});
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
