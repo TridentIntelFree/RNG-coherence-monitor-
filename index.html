@@ -351,7 +351,7 @@
 
   <div class="term panel" id="psPanel">
     <div class="ptop"><div class="ptitle">> POLYSCRIPT</div><div class="pmeta">a shift cipher rendered across six alphabets</div></div>
-    <div class="hint" style="margin-top:2px">Your idea, made real and honest. Every byte is matched to a symbol and <b>shifted</b> — but the shift comes from a real keystream (ChaCha20 from your password), so it is a genuine stream cipher wearing a multilingual skin. The output mixes <b>Runic, Cherokee, Greek, Cyrillic, Armenian, Georgian, Katakana and Hiragana</b> — every byte a different world. <b>The scripts add no security</b> — an attacker maps them back to numbers for free; the strength is entirely the keystream. Lossless for any text, emoji included.</div>
+    <div class="hint" style="margin-top:2px">Your idea, made real and honest. Every byte is matched to a symbol and <b>shifted</b> by a real keystream (ChaCha20 from your password) — a genuine stream cipher wearing a multilingual skin. And the alphabet itself is <b>interwoven at random from your key</b>: each message draws 256 symbols from a pool of ten scripts — <b>Runic, Cherokee, Greek, Cyrillic, Armenian, Georgian, Katakana, Hiragana, Thai and Hangul</b> — shuffled into a fresh order nobody else derives. <b>The scripts and the shuffle add no security</b> — an attacker maps glyphs back to numbers for free; the strength is entirely the keystream. Lossless for any text, emoji included.</div>
 
     <div class="lkstep"><span class="lknum">1</span> Encrypt to polyscript</div>
     <textarea id="psSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Text to render across six alphabets…"></textarea>
@@ -362,10 +362,11 @@
       <button id="psEnc" class="cbtn" type="button">🈯 Encrypt</button>
       <button id="psCopy" class="cbtn" type="button">⧉ Copy</button>
     </div>
-    <textarea id="psOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="POLY1:…  a jumble of six scripts appears here. Paste it into CRYPTANALYSIS.BRAIN and it reads as structureless — because underneath it is a real cipher."></textarea>
+    <textarea id="psOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="POLY2:…  a jumble of ten scripts appears here, in an alphabet built fresh from your key. Paste it into CRYPTANALYSIS.BRAIN and it reads as structureless."></textarea>
+    <div id="psInfo" class="hint" style="margin-top:6px"></div>
 
     <div class="lkstep" style="margin-top:14px"><span class="lknum">2</span> Decrypt</div>
-    <textarea id="psBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a POLY1:… blob here…"></textarea>
+    <textarea id="psBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a POLY2:… blob here…"></textarea>
     <div class="sdf" style="margin-top:8px">
       <input id="psPw2" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
       <button id="psShow2" class="cbtn" type="button">👁</button>
@@ -2994,56 +2995,67 @@
      The scripts are a lossless skin worth zero security bits; the keystream is
      the whole of the strength. A keyless multi-alphabet shift -- the bare idea --
      is a Vigenère the cryptanalysis brain breaks. */
-  var PS_A=(function(){
-    // eight scripts, round-robined so every position could be any of them: Runic,
-    // Cherokee, Greek, Cyrillic, Armenian, Georgian, Katakana, Hiragana
+  // a big pool spanning ten scripts; each message draws its own 256-symbol
+  // alphabet from it, permuted at random from the key (see psAlpha)
+  var PS_POOL=(function(){
     var ranges=[[0x16A0,0x16EA],[0x13A0,0x13F4],[0x3B1,0x3C9],[0x410,0x44F],
-                [0x531,0x556],[0x10D0,0x10FA],[0x30A1,0x30FA],[0x3041,0x3096]];
-    var A=[],seen={},k=0,added=true,r,c;
-    while(A.length<256&&added){added=false;
-      for(r=0;r<ranges.length&&A.length<256;r++){c=ranges[r][0]+k;
-        if(c<=ranges[r][1]){added=true;if(!seen[c]){seen[c]=1;A.push(String.fromCharCode(c));}}}
-      k++;}
+                [0x531,0x556],[0x10D0,0x10FA],[0x30A1,0x30FA],[0x3041,0x3096],
+                [0x0E01,0x0E2E],[0xAC00,0xAC5F]];
+    var A=[],seen={},r,c;
+    for(r=0;r<ranges.length;r++)for(c=ranges[r][0];c<=ranges[r][1];c++)
+      if(!seen[c]){seen[c]=1;A.push(String.fromCharCode(c));}
     return A;
   })();
-  var PS_REV={};PS_A.forEach(function(s,i){PS_REV[s]=i;});
   function psBits(pw,salt,iters,len){
     return crypto.subtle.importKey('raw',new TextEncoder().encode(pw),{name:'PBKDF2'},false,['deriveBits'])
       .then(function(k){return crypto.subtle.deriveBits({name:'PBKDF2',salt:salt,iterations:iters,hash:'SHA-256'},k,len*8);})
       .then(function(bits){return new Uint8Array(bits);});
   }
+  /* The interwoven alphabet: a keyed Fisher-Yates shuffle of the whole pool,
+     then the first 256 become THIS message's symbols, in that order. Derived
+     from a dedicated permutation key + the nonce, so encryptor and decryptor
+     build the identical alphabet and every message looks different. */
+  function psAlpha(permKey,nonce){
+    var pool=PS_POOL.slice(),n=pool.length;
+    var rnd=chacha20(permKey,nonce,7,new Uint8Array(n*2)),ri=0,i,j,r,t;
+    for(i=n-1;i>0;i--){r=((rnd[ri]<<8)|rnd[ri+1]);ri+=2;j=r%(i+1);t=pool[i];pool[i]=pool[j];pool[j]=t;}
+    var ALPHA=pool.slice(0,256),INV={},k;for(k=0;k<256;k++)INV[ALPHA[k]]=k;
+    return {ALPHA:ALPHA,INV:INV};
+  }
+  function psAlphaBits(){                                  // log2 of the number of ordered 256-subsets of the pool
+    var n=PS_POOL.length,b=0,k;for(k=n-255;k<=n;k++)b+=Math.log2(k);return Math.round(b);
+  }
   function psEncrypt(pw,text){
-    // encrypt-then-MAC: ChaCha20 for confidentiality, HMAC-SHA-256 for integrity,
-    // with independent keys from a single 64-byte PBKDF2 output
     var salt=new Uint8Array(16);crypto.getRandomValues(salt);
     var nonce=new Uint8Array(12);crypto.getRandomValues(nonce);
-    return psBits(pw,salt,150000,64).then(function(kk){
-      var key=kk.slice(0,32),mk=kk.slice(32);
+    return psBits(pw,salt,150000,96).then(function(kk){
+      var key=kk.slice(0,32),mk=kk.slice(32,64),pk=kk.slice(64,96);
       var pt=new TextEncoder().encode(text);
       var ks=chacha20(key,nonce,1,new Uint8Array(pt.length));
       var bidx=new Uint8Array(pt.length),i;for(i=0;i<pt.length;i++)bidx[i]=(pt[i]+ks[i])&255;
       var mac=hmac256(mk,bidx).slice(0,16);
-      var body='';for(i=0;i<bidx.length;i++)body+=PS_A[bidx[i]];
+      var al=psAlpha(pk,nonce),body='';for(i=0;i<bidx.length;i++)body+=al.ALPHA[bidx[i]];
       var hdr=toB64(cat([salt,nonce,mac]));
-      kk.fill(0);key.fill(0);mk.fill(0);
-      return 'POLY1:'+hdr+':'+body;
+      kk.fill(0);key.fill(0);mk.fill(0);pk.fill(0);
+      return 'POLY2:'+hdr+':'+body;
     });
   }
   function psDecrypt(pw,blob){
-    var m=String(blob).trim().match(/^POLY1:([A-Za-z0-9\-_=]+):([\s\S]*)$/);
-    if(!m)return Promise.reject(new Error('not a POLY1 blob'));
+    var m=String(blob).trim().match(/^POLY2:([A-Za-z0-9\-_=]+):([\s\S]*)$/);
+    if(!m)return Promise.reject(new Error('not a POLY2 blob'));
     var raw=fromB64(m[1]);
     if(raw.length<44)return Promise.reject(new Error('truncated header'));
     var salt=raw.slice(0,16),nonce=raw.slice(16,28),mac=raw.slice(28,44);
-    var body=Array.from(m[2]),bidx=new Uint8Array(body.length),i,idx;
-    for(i=0;i<body.length;i++){idx=PS_REV[body[i]];if(idx===undefined)return Promise.reject(new Error('symbol outside alphabet'));bidx[i]=idx;}
-    return psBits(pw,salt,150000,64).then(function(kk){
-      var key=kk.slice(0,32),mk=kk.slice(32);
+    var body=Array.from(m[2]);
+    return psBits(pw,salt,150000,96).then(function(kk){
+      var key=kk.slice(0,32),mk=kk.slice(32,64),pk=kk.slice(64,96);
+      var al=psAlpha(pk,nonce),bidx=new Uint8Array(body.length),i,idx;
+      for(i=0;i<body.length;i++){idx=al.INV[body[i]];if(idx===undefined){kk.fill(0);throw new Error('symbol not in this alphabet');}bidx[i]=idx;}
       var chk=hmac256(mk,bidx),ok=true,j;for(j=0;j<16;j++)if(chk[j]!==mac[j])ok=false;
       if(!ok){kk.fill(0);throw new Error('auth failed');}
       var ks=chacha20(key,nonce,1,new Uint8Array(body.length)),out=new Uint8Array(body.length);
       for(j=0;j<body.length;j++)out[j]=(bidx[j]-ks[j])&255;
-      kk.fill(0);key.fill(0);mk.fill(0);
+      kk.fill(0);key.fill(0);mk.fill(0);pk.fill(0);
       return new TextDecoder().decode(out);
     });
   }
@@ -3054,7 +3066,12 @@
     document.getElementById('psEnc').disabled=true;
     psEncrypt(lkNormPw(pw),t).then(function(b){
       document.getElementById('psOut').value=b;document.getElementById('psEnc').disabled=false;
-      logLine('polyscript :: RENDERED '+t.length+' chars across six scripts');
+      var abits=psAlphaBits(),pwbits=lkEntropyBits(pw);
+      document.getElementById('psInfo').innerHTML='This message\u2019s alphabet is 1 of <b>~2^'+abits+
+        '</b> possible orderings — a bigger number than a 256-bit key. But it is <b>derived from your password</b>, '+
+        'so its real entropy is your password\u2019s (~'+pwbits+' bits), not '+abits+
+        '. A bigger room adds no bits you did not bring; the security stays the keystream.';
+      logLine('polyscript :: RENDERED '+t.length+' chars, fresh key-woven alphabet');
     }).catch(function(){document.getElementById('psEnc').disabled=false;logLine('polyscript :: ENCRYPT FAILED','a');});
   }
   function psDoDec(){
@@ -3067,7 +3084,7 @@
       out.innerHTML='<div class="ok">'+lkEsc(pt)+'</div>';document.getElementById('psDec').disabled=false;
       logLine('polyscript :: DECRYPTED');
     }).catch(function(){
-      out.innerHTML='<div class="bad">Could not decrypt — wrong password, altered text, or not a POLY1 blob.</div>';
+      out.innerHTML='<div class="bad">Could not decrypt — wrong password, altered text, or not a POLY2 blob.</div>';
       document.getElementById('psDec').disabled=false;logLine('polyscript :: DECRYPT FAILED','a');
     });
   }
