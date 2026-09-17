@@ -330,30 +330,40 @@
     <div class="ptop"><div class="ptitle">> LOCKER</div><div class="pmeta">encrypt a note with a password · offline</div></div>
     <div class="hint" style="margin-top:2px">The simple path: <b>lock</b> a secret with a password, <b>unlock</b> it with the same password. AES-256-GCM, key stretched from your password by PBKDF2 (150k rounds). Everything stays in this tab. For a full key, a two-party channel, or backups, use the panels below.</div>
 
-    <div class="lkstep"><span class="lknum">1</span> Lock a secret</div>
-    <textarea id="lkSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Type or paste the secret you want to protect…"></textarea>
-    <div class="sdf" style="margin-top:8px">
-      <input id="lkPw" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
-      <button id="lkGen" class="cbtn" type="button" title="Generate a strong random password">🎲 strong</button>
-      <button id="lkShow" class="cbtn" type="button" title="Show / hide">👁</button>
+    <div class="pstabs">
+      <button id="lkTabEnc" class="pstab on" type="button">🔒 Lock</button>
+      <button id="lkTabDec" class="pstab" type="button">🔓 Unlock</button>
     </div>
-    <div class="meter" id="lkStrWrap" style="margin-top:7px"><i id="lkStr"></i></div>
-    <div class="hint" id="lkStrNote">Password strength shows here. A generated password is safest; a weak one is what the panels below exist to crack.</div>
-    <div class="ctl" style="margin-top:9px">
-      <button id="lkLock" class="cbtn" type="button">🔒 Lock</button>
-      <button id="lkCopy" class="cbtn" type="button">⧉ Copy</button>
-      <button id="lkSave" class="cbtn" type="button">⭳ Save .txt</button>
-    </div>
-    <textarea id="lkOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="The locked blob (LOCK…) appears here. Share it however you like — it is meaningless without the password."></textarea>
 
-    <div class="lkstep" style="margin-top:14px"><span class="lknum">2</span> Unlock a blob</div>
-    <textarea id="lkBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a locked blob here…"></textarea>
-    <div class="sdf" style="margin-top:8px">
-      <input id="lkPw2" class="sdin" type="password" placeholder="password" autocomplete="off" spellcheck="false">
-      <button id="lkShow2" class="cbtn" type="button" title="Show / hide">👁</button>
-      <button id="lkUnlock" class="cbtn" type="button">🔓 Unlock</button>
+    <div id="lkEncView">
+      <label class="krlab" for="lkSecret">Your secret</label>
+      <textarea id="lkSecret" class="sdta" autocomplete="off" spellcheck="false" placeholder="Type or paste the secret you want to protect…"></textarea>
+      <label class="krlab" for="lkPw" style="margin-top:9px">Password</label>
+      <div class="sdf">
+        <input id="lkPw" class="sdin" type="password" placeholder="a password only you and your reader know" autocomplete="off" spellcheck="false">
+        <button id="lkGen" class="cbtn" type="button" title="Generate a strong random password">🎲</button>
+        <button id="lkShow" class="cbtn" type="button" title="Show / hide">👁</button>
+      </div>
+      <div class="meter" id="lkStrWrap" style="margin-top:7px"><i id="lkStr"></i></div>
+      <div class="hint" id="lkStrNote">Password strength shows here. A generated password is safest.</div>
+      <div class="ctl" style="margin-top:9px"><button id="lkLock" class="cbtn" type="button">🔒 Lock</button></div>
+      <label class="krlab" for="lkOut" style="margin-top:11px">Locked — copy and send this</label>
+      <textarea id="lkOut" class="sdta" readonly autocomplete="off" spellcheck="false" placeholder="The locked blob (LOCK1:…) appears here once you press Lock."></textarea>
+      <div class="ctl"><button id="lkCopy" class="cbtn" type="button">⧉ Copy</button><button id="lkSave" class="cbtn" type="button">⭳ Save .txt</button></div>
     </div>
-    <div id="lkPlain" class="lkplain"></div>
+
+    <div id="lkDecView" style="display:none">
+      <label class="krlab" for="lkBlob">Paste the locked blob</label>
+      <textarea id="lkBlob" class="sdta" autocomplete="off" spellcheck="false" placeholder="Paste a LOCK1:… blob you received…"></textarea>
+      <label class="krlab" for="lkPw2" style="margin-top:9px">Password</label>
+      <div class="sdf">
+        <input id="lkPw2" class="sdin" type="password" placeholder="the password it was locked with" autocomplete="off" spellcheck="false">
+        <button id="lkShow2" class="cbtn" type="button" title="Show / hide">👁</button>
+      </div>
+      <div class="ctl"><button id="lkUnlock" class="cbtn" type="button">🔓 Unlock</button></div>
+      <label class="krlab" style="margin-top:11px">Recovered secret</label>
+      <div id="lkPlain" class="lkplain"></div>
+    </div>
 
     <div class="danger-note">
       <b>Your password is the whole of your security.</b> The cipher is strong; a guessable password is not, and PBKDF2 only slows a guesser, it does not stop one. Use the <b>🎲 strong</b> button and save what it gives you, or accept that a weak password is crackable — the <b>KEY.RECOVERY</b> panel below will show you exactly how fast. Runs entirely in this tab; nothing is stored or sent, so a blob you lose the password to is gone for good.
@@ -4332,6 +4342,17 @@
       document.getElementById('lkCopy').addEventListener('click',function(){
         var v=document.getElementById('lkOut').value;if(v&&navigator.clipboard)navigator.clipboard.writeText(v).then(function(){logLine('locker :: COPIED');});});
       document.getElementById('lkSave').addEventListener('click',lkSaveTxt);
+      function lkMode(dec){
+        document.getElementById('lkEncView').style.display=dec?'none':'';
+        document.getElementById('lkDecView').style.display=dec?'':'none';
+        document.getElementById('lkTabEnc').classList.toggle('on',!dec);
+        document.getElementById('lkTabDec').classList.toggle('on',dec);
+      }
+      document.getElementById('lkTabEnc').addEventListener('click',function(){lkMode(false);});
+      document.getElementById('lkTabDec').addEventListener('click',function(){lkMode(true);});
+      document.getElementById('lkSecret').addEventListener('input',function(){
+        if(/^\s*(LOCK1|SYNCPW1)\./.test(this.value)){var v=this.value;this.value='';lkMode(true);
+          document.getElementById('lkBlob').value=v.trim();logLine('locker :: that is a blob \u2014 switched to Unlock','a');}});
       lkStrengthUpdate();
     })();
     (function(){
