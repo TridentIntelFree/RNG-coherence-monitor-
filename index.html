@@ -577,11 +577,14 @@
     <div class="vow">
       <div class="vowh">What this does — and the one thing it cannot</div>
       <div class="hint" style="margin-top:6px">
-        A triage brain and a set of classical solvers. The mushroom-body gate first
+        A triage brain and a wide set of solvers. The mushroom-body gate first
         asks whether the input has any exploitable structure at all. If it does, the
-        solvers try to actually recover the plaintext: shift, Atbash, monoalphabetic
-        substitution (simulated annealing over English quadgrams), Vigenère, and
-        single- or repeating-key XOR. <b>Paste ciphertext, it attempts to read it.</b>
+        solvers try to actually recover the plaintext: shift/Caesar, Atbash, affine,
+        substitution (both simulated annealing for long text and word-pattern
+        matching for short cryptograms), Vigenère, single- and repeating-key XOR,
+        rail-fence and columnar transposition, Morse, Baconian, ROT47, and the number
+        ciphers — A1Z26, ASCII decimal and binary. <b>Paste anything, it attempts to
+        read it.</b>
         <br><br>
         <b>It cannot break a modern cipher, and it will tell you so.</b> AES, ChaCha and
         anything like them produce output the gate reads as structureless — because it
@@ -2980,6 +2983,57 @@
       note:best.words+' of '+totWords+' words matched'+(best.q?' · '+best.q+' letters unsolved (?)':'')};
   }
 
+  // ---------- number & binary ciphers (common in puzzle games) ----------
+  function cnA1Z26(raw){
+    if(!/^[0-9\s\/,.\-|]+$/.test(raw.trim())||!/[0-9]/.test(raw))return null;
+    var words=raw.trim().split(/\s*[\/|]\s*|\s{2,}/),out=words.map(function(w){
+      var nums=w.trim().split(/[^0-9]+/).filter(function(x){return x;});
+      return nums.map(function(n){var v=+n;return v>=1&&v<=26?CN_AZ[v-1]:'?';}).join('');}).join(' ').trim();
+    if(!/[a-z]/.test(out))return null;
+    return {name:'A1Z26 (letter numbers)',pt:out,perChar:cnScore(cnLetters(out)),words:cnWordHits(out).hits,note:'1=A … 26=Z'};
+  }
+  function cnDecAscii(raw){
+    if(!/^[0-9\s,]+$/.test(raw.trim()))return null;
+    var nums=raw.trim().split(/[^0-9]+/).filter(function(x){return x;}).map(Number);
+    if(nums.length<2||!nums.every(function(n){return n>=32&&n<=126;}))return null;
+    var out=nums.map(function(n){return String.fromCharCode(n);}).join('');
+    return {name:'ASCII decimal',pt:out,perChar:cnScore(cnLetters(out)),words:cnWordHits(out).hits,note:'code points 32–126'};
+  }
+  function cnBinary(raw){
+    if(!/^[01\s]+$/.test(raw.trim()))return null;
+    var bits=raw.replace(/[^01]/g,'');if(bits.length<8)return null;
+    var out='',i;for(i=0;i+8<=bits.length;i+=8)out+=String.fromCharCode(parseInt(bits.substr(i,8),2));
+    if(!/^[\x20-\x7e]*$/.test(out)||!out.length)return null;
+    return {name:'Binary (8-bit ASCII)',pt:out,perChar:cnScore(cnLetters(out)),words:cnWordHits(out).hits,note:'8 bits per character'};
+  }
+  // ---------- affine: c = a*p + b ----------
+  function cnAffine(letters){
+    if(letters.length<8)return null;
+    function inv(a){for(var i=1;i<26;i++)if((a*i)%26===1)return i;return 0;}
+    var AS=[1,3,5,7,9,11,15,17,19,21,23,25],best=null,ai,a,b,i,o,c,sc;
+    for(var x=0;x<AS.length;x++){a=AS[x];ai=inv(a);for(b=0;b<26;b++){o='';
+      for(i=0;i<letters.length;i++){c=letters.charCodeAt(i)-97;o+=CN_AZ[(ai*((c-b)%26+26))%26];}
+      sc=cnScore(o)+cnWordHits(o).ratio*3;
+      if(!best||sc>best.sc){best={sc:sc,pt:o,a:a,b:b};}}}
+    return {name:'Affine cipher',pt:best.pt,perChar:cnScore(best.pt),words:cnWordHits(best.pt).hits,note:'a='+best.a+', b='+best.b};
+  }
+  // ---------- ROT47 (printable ASCII) ----------
+  function cnRot47(raw){
+    if(!/[!-~]/.test(raw)||/^[a-zA-Z\s]+$/.test(raw))return null;   // only when there is punctuation/symbols
+    var o='',i,c;for(i=0;i<raw.length;i++){c=raw.charCodeAt(i);o+=(c>=33&&c<=126)?String.fromCharCode(33+((c-33+47)%94)):raw[i];}
+    var w=cnWordHits(o);if(w.hits<1)return null;
+    return {name:'ROT47',pt:o,perChar:cnScore(cnLetters(o)),words:w.hits,note:'ASCII 33–126 rotated 47'};
+  }
+  // ---------- Baconian (two-symbol, 5 per letter) ----------
+  function cnBacon(raw){
+    var t=raw.toUpperCase().replace(/[^A-Z]/g,'');var u={},k;for(var i=0;i<t.length;i++)u[t[i]]=1;
+    var keys=Object.keys(u);if(keys.length!==2||t.length<10)return null;
+    var a=keys.sort()[0],out='';for(i=0;i+5<=t.length;i+=5){var v=0;for(var j=0;j<5;j++)v=v*2+(t[i+j]===a?0:1);out+=v<26?CN_AZ[v]:'?';}
+    if(!/[a-z]/.test(out))return null;
+    var w=cnWordHits(out);if(w.hits<1)return null;
+    return {name:'Baconian',pt:out,perChar:cnScore(out),words:w.hits,note:'5 symbols per letter'};
+  }
+
   // ---------- Morse ----------
   var CN_MORSE={".-":"A","-...":"B","-.-.":"C","-..":"D",".":"E","..-.":"F","--.":"G","....":"H","..":"I",".---":"J","-.-":"K",".-..":"L","--":"M","-.":"N","---":"O",".--.":"P","--.-":"Q",".-.":"R","...":"S","-":"T","..-":"U","...-":"V",".--":"W","-..-":"X","-.--":"Y","--..":"Z","-----":"0",".----":"1","..---":"2","...--":"3","....-":"4",".....":"5","-....":"6","--...":"7","---..":"8","----.":"9"};
   function cnMorse(raw){
@@ -3067,6 +3121,12 @@
     var mor=cnMorse(raw);
     if(mor){cnRender({novelty:0,entropy:0,entRatio:0,ic:0,attack:true,verdict:'Morse code detected — decoded directly from the dots and dashes.'},[mor]);
       logLine('cryptanalysis :: MORSE decoded');return;}
+    // pure numbers / binary: decode directly (A1Z26, ASCII decimal, binary)
+    if(/^[01\s]+$/.test(raw.trim())&&raw.replace(/[^01]/g,'').length>=8){
+      var bn=cnBinary(raw);if(bn){cnRender({novelty:0,entropy:0,entRatio:0,ic:0,attack:true,verdict:'Binary detected — decoded as 8-bit ASCII.'},[bn]);logLine('cryptanalysis :: BINARY decoded');return;}}
+    if(/^[0-9\s\/,.\-|]+$/.test(raw.trim())&&/[0-9]/.test(raw)){
+      var nr=[];var a1=cnA1Z26(raw);if(a1)nr.push(a1);var da=cnDecAscii(raw);if(da)nr.push(da);
+      if(nr.length){cnRender({novelty:0,entropy:0,entRatio:0,ic:0,attack:true,verdict:'Numeric cipher detected — decoded below (best guess first).'},nr);logLine('cryptanalysis :: NUMERIC decoded');return;}}
     var P=cnParse(raw),bytes=P.bytes;
     var nov=cnNovelty(bytes),H=cnEntropy(bytes),ic=cnIC(bytes);
     // Entropy is capped by length -- 48 bytes can never exceed log2(48)=5.58 bits/byte,
@@ -3102,6 +3162,9 @@
       var wc=(P.text.trim().match(/[a-z]+/gi)||[]).length,solved=false;
       results.forEach(function(R){if(R&&R.words&&R.words>=wc*0.7)solved=true;});
       if(!solved&&/\s/.test(P.text.trim())&&L.length<=160){var wps=cnPatternSubst(P.text);if(wps)results.push(wps);}
+      if(L.length>=8){var aff=cnAffine(L);if(aff)results.push(aff);}
+      var r47=cnRot47(P.text);if(r47)results.push(r47);
+      var bac=cnBacon(P.text);if(bac)results.push(bac);
       // XOR only when there is essentially no natural-language text -- real bytes
       if(L.length<bytes.length*0.3){
         results.push(cnXorSingle(bytes));var xr=cnXorRepeat(bytes);if(xr)results.push(xr);
