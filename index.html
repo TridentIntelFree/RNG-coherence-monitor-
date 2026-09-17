@@ -213,6 +213,11 @@
   .cnr .cnnote{font-size:9.5px;color:var(--faint);margin-top:5px}
   .cnbar{height:4px;border-radius:2px;background:rgba(0,255,102,.12);margin-top:6px;overflow:hidden}
   .cnbar>i{display:block;height:100%;background:var(--grn)}
+  .pggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;margin-top:8px}
+  .pgcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:1px solid var(--edge);border-radius:5px;background:rgba(0,0,0,.35);color:var(--txt);cursor:pointer}
+  .pgcell:hover{border-color:var(--grndim);background:rgba(0,255,102,.08)}
+  .pgcell span{font-size:9px;color:var(--dim);letter-spacing:.1em}
+  .pgcell svg{color:var(--bright)}
   .kryout{margin-top:6px}
   .kryout .kh{font-size:10px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
   .kryout .kk{font-size:11px;color:var(--txt);margin:5px 0}
@@ -619,6 +624,19 @@
       that leaks structure and one that does not — which is the whole reason the entropy
       work on this page matters.
     </div>
+  </div>
+
+  <div class="term panel" id="pgPanel">
+    <div class="ptop"><div class="ptitle">> PIGPEN</div><div class="pmeta">click the shapes you see</div></div>
+    <div class="hint" style="margin-top:2px">Pigpen has no symbols you can type, so it cannot be pasted. Instead, match the glyphs in your puzzle to these and <b>click them</b> — the letters build below. Standard (Masonic) variant: two tic-tac-toe grids (second dotted), two X-grids (second dotted).</div>
+    <div id="pgGrid" class="pggrid"></div>
+    <div class="sdf" style="margin-top:9px">
+      <button id="pgSpace" class="cbtn" type="button">␣ space</button>
+      <button id="pgBack" class="cbtn" type="button">⌫ back</button>
+      <button id="pgClear" class="cbtn danger" type="button">clear</button>
+    </div>
+    <label class="krlab" style="margin-top:9px">Decoded</label>
+    <div id="pgOut" class="lkplain">—</div>
   </div>
 
   <div class="term panel" id="kryPanel">
@@ -3036,6 +3054,50 @@
     return {name:'Baconian',pt:out,perChar:cnScore(out),words:w.hits,note:'5 symbols per letter'};
   }
 
+  /* ---------- PIGPEN: a click-to-decode chart ----------
+     Pigpen maps each letter to a drawn shape, so there is nothing to type. Instead
+     we render all 26 glyphs (standard Masonic variant: two tic-tac-toe grids, the
+     second dotted; two X-grids, the second dotted) and let you click the shapes you
+     see in a puzzle to build the plaintext. */
+  function pgSVG(letter){
+    var i=letter.charCodeAt(0)-65,grid,pos,dot=false,carets=false,cidx=0;
+    if(i<9){grid=1;pos=i;}
+    else if(i<18){grid=1;pos=i-9;dot=true;}
+    else if(i<22){carets=true;cidx=i-18;}
+    else {carets=true;cidx=i-22;dot=true;}
+    var seg=[],cx=12,cy=12;
+    if(!carets){
+      // walls per tic-tac-toe cell: T,R,B,L
+      // walls [top,right,bottom,left] for tic-tac-toe cells A..I
+      var W=[[0,1,1,0],[0,1,1,1],[0,0,1,1],[1,1,1,0],[1,1,1,1],[1,0,1,1],[1,1,0,0],[1,1,0,1],[1,0,0,1]];
+      var w=W[pos];
+      if(w[0])seg.push('M3 3H21');            // top
+      if(w[1])seg.push('M21 3V21');           // right
+      if(w[2])seg.push('M3 21H21');           // bottom
+      if(w[3])seg.push('M3 3V21');            // left
+    }else{
+      var C=[['M22 3L4 12L22 21'],  // S point-left (open right)
+             ['M3 21L12 3L21 21'],  // T point-up (open bottom)
+             ['M3 3L21 12L3 21'],   // U point-right (open left)
+             ['M3 3L12 21L21 3']];  // V point-down (open top)
+      seg=C[cidx].slice();
+    }
+    var paths=seg.map(function(d){return '<path d="'+d+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';}).join('');
+    var d=dot?'<circle cx="12" cy="12" r="2" fill="currentColor"/>':'';
+    return '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">'+paths+d+'</svg>';
+  }
+  function pgBuild(){
+    var g=document.getElementById('pgGrid');if(!g)return;var html='',L,i;
+    for(i=0;i<26;i++){L=String.fromCharCode(65+i);
+      html+='<button class="pgcell" type="button" data-l="'+L+'">'+pgSVG(L)+'<span>'+L+'</span></button>';}
+    g.innerHTML=html;
+    g.querySelectorAll('.pgcell').forEach(function(btn){
+      btn.addEventListener('click',function(){pgAppend(btn.getAttribute('data-l'));});});
+  }
+  var PG_OUT='';
+  function pgAppend(c){PG_OUT+=c;pgShow();}
+  function pgShow(){var o=document.getElementById('pgOut');if(o)o.textContent=PG_OUT.toLowerCase()||'—';}
+
   // ---------- recursive auto-unwrap: peel layered encodings until English ----------
   function cnRev(s){return s.split('').reverse().join('');}
   function cnAtb(s){return s.replace(/[a-z]/gi,function(c){var lo=c===c.toLowerCase();var b=c.toUpperCase().charCodeAt(0)-65;if(b<0||b>25)return c;var r=String.fromCharCode(90-b);return lo?r.toLowerCase():r;});}
@@ -4670,6 +4732,10 @@
     document.getElementById('kryB1').addEventListener('click',function(){krySolve('K1');});
     document.getElementById('kryB2').addEventListener('click',function(){krySolve('K2');});
     document.getElementById('kryB3').addEventListener('click',function(){krySolve('K3');});
+    pgBuild();
+    document.getElementById('pgSpace').addEventListener('click',function(){pgAppend(' ');});
+    document.getElementById('pgBack').addEventListener('click',function(){PG_OUT=PG_OUT.slice(0,-1);pgShow();});
+    document.getElementById('pgClear').addEventListener('click',function(){PG_OUT='';pgShow();});
     ['chKey','chMsg','chBlob'].forEach(function(id){document.getElementById(id).value='';});
     chFp();chRenderRatchet();
   })();
