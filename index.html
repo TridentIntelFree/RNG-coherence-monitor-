@@ -2638,15 +2638,53 @@
       for(i=0;i<b.length;i++)b[i]=parseInt(hx.substr(i*2,2),16);
       return {bytes:b,kind:'hex'};
     }
-    // base64?
-    if(/^[A-Za-z0-9+/=_\-\s]+$/.test(t)&&t.replace(/[\s]/g,'').length>=8&&/[+/=]|[A-Z].*[a-z]|[a-z].*[A-Z]/.test(t)&&!/^[a-z ]+$/.test(t)){
-      try{var d=fromB64(t.replace(/\s/g,''));if(d.length>=6)return {bytes:d,kind:'base64'};}catch(e){}
+    // base64? Only when it really looks like base64: no spaces, and carrying a
+    // non-letter signal (+ / = _ - or a digit). A letters-and-spaces string is
+    // natural-language ciphertext -- a shift or substitution -- not base64.
+    if(!/\s/.test(t)&&/^[A-Za-z0-9+/=_\-]+$/.test(t)&&t.replace(/[=]/g,'').length>=12&&/[0-9+/=_\-]/.test(t)){
+      try{var d=fromB64(t);if(d.length>=6)return {bytes:d,kind:'base64'};}catch(e){}
     }
     // plain text
     var enc=new TextEncoder().encode(t);
     return {bytes:enc,kind:'text',text:t};
   }
   function cnLetters(t){return t.toLowerCase().replace(/[^a-z]/g,'');}
+
+  // ---------- a common-word oracle, so short shifts resolve to real words ----------
+  var CN_WORDS=null;
+  function cnWordSet(){
+    if(CN_WORDS)return CN_WORDS;
+    CN_WORDS=Object.create(null);
+    var core=('the be to of and a in that have i it for not on with he as you do at this but his by from '+
+      'they we say her she or an will my one all would there their what so up out if about who get which go me '+
+      'when make can like time no just him know take people into year your good some could them see other than '+
+      'then now look only come its over think also back after use two how our work first well way even new want '+
+      'because any these give day most us hello hi hey pal friend secret message spy code key the north bridge '+
+      'midnight attack dawn meet is are was were yes no help love water fire earth wind gold king queen').split(' ');
+    core.forEach(function(w){if(w)CN_WORDS[w]=1;});
+    var c=CN_CORPUS.split(/[^a-z]+/),i;for(i=0;i<c.length;i++)if(c[i].length>=2)CN_WORDS[c[i]]=1;
+    return CN_WORDS;
+  }
+  function cnWordHits(text){
+    var set=cnWordSet(),toks=text.toLowerCase().split(/[^a-z]+/),hits=0,tot=0,i;
+    for(i=0;i<toks.length;i++){if(toks[i].length>=2){tot++;if(set[toks[i]])hits++;}else if(toks[i].length===1&&(toks[i]==='a'||toks[i]==='i')){tot++;hits++;}}
+    return {hits:hits,ratio:tot?hits/tot:0};
+  }
+  // shift solver on the RAW text (keeps spaces/case so words are visible), scored
+  // by real-word hits first, trigram second -- nails short ciphers like "Lipps tep"
+  function cnShift(raw){
+    if(!raw)return null;
+    var best=null,sh,i,out,w,sc,perc;
+    for(sh=0;sh<26;sh++){out='';
+      for(i=0;i<raw.length;i++){var c=raw.charCodeAt(i);
+        if(c>=65&&c<=90)out+=String.fromCharCode((c-65-sh+26)%26+65);
+        else if(c>=97&&c<=122)out+=String.fromCharCode((c-97-sh+26)%26+97);
+        else out+=raw[i];}
+      w=cnWordHits(out);perc=cnScore(cnLetters(out));sc=w.ratio*6+w.hits*0.8+perc*0.15;
+      if(!best||sc>best._s)best={name:'Caesar / ROT shift',pt:out,perChar:perc,words:w.hits,
+        note:'shift of '+sh+(w.hits?' \u00b7 '+w.hits+' word'+(w.hits===1?'':'s')+' matched':''),_s:sc};}
+    return best;
+  }
 
   // ---------- solvers ----------  each returns {name,pt,perChar,note}
   function cnCaesar(letters){
@@ -2784,10 +2822,12 @@
     results.forEach(function(R){var pen=0;
       if(/substitution/i.test(R.name))pen=Math.max(0,(140-R.pt.length)/140)*2.2;
       else if(/Vigen/i.test(R.name))pen=0.15;
-      R.rank=R.perChar-pen;});
+      R.rank=R.perChar-pen+(R.words||0)*1.2;});                // real words dominate the ranking
     results.sort(function(a,b){return b.rank-a.rank;});
     var html='',i;
-    for(i=0;i<results.length;i++){var R=results[i],conf=cnConf(R.perChar),win=i===0&&conf>0.35;
+    for(i=0;i<results.length;i++){var R=results[i],conf=cnConf(R.perChar);
+      if(R.words)conf=Math.max(conf,Math.min(0.99,0.45+0.22*R.words));   // matched real words: high confidence
+      var win=i===0&&conf>0.35;
       html+='<div class="cnr'+(win?' win':'')+'">'+
         '<div class="cnh"><b>'+R.name+(win?' — best guess':'')+'</b><span>'+(conf*100).toFixed(0)+'% confidence</span></div>'+
         '<div class="cnpt">'+cnEsc(R.pt.slice(0,240))+(R.pt.length>240?'…':'')+'</div>'+
@@ -2823,13 +2863,14 @@
     var results=[];
     if(P.kind==='text'){
       var L=cnLetters(P.text);
+      if(L.length>=1){results.push(cnShift(P.text));}          // shift works down to a word or two
       if(L.length>=6){
-        results.push(cnCaesar(L));results.push(cnAtbash(L));
+        results.push(cnAtbash(L));
         var sub=cnSubst(L);if(sub)results.push(sub);
         var vig=cnVigenere(L);if(vig)results.push(vig);
       }
-      // also try XOR in case it is text-encoded bytes
-      if(!L.length||L.length<bytes.length*0.6){
+      // XOR only when there is essentially no natural-language text -- real bytes
+      if(L.length<bytes.length*0.3){
         results.push(cnXorSingle(bytes));var xr=cnXorRepeat(bytes);if(xr)results.push(xr);
       }
     }else{
